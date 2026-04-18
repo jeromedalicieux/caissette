@@ -190,21 +190,21 @@ importers:
 
   packages/core/auth:
     dependencies:
-      '@rebond/tenant':
-        specifier: workspace:*
-        version: link:../tenant
       '@rebond/types':
         specifier: workspace:*
         version: link:../../shared/types
+      '@rebond/utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
       drizzle-orm:
         specifier: ^0.39.0
         version: 0.39.3(@cloudflare/workers-types@4.20260418.1)
       hono:
         specifier: ^4.7.0
         version: 4.12.14
-      lucia:
-        specifier: ^3.2.0
-        version: 3.2.2
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -250,12 +250,18 @@ importers:
       '@rebond/types':
         specifier: workspace:*
         version: link:../../shared/types
+      '@rebond/utils':
+        specifier: workspace:*
+        version: link:../../shared/utils
       drizzle-orm:
         specifier: ^0.39.0
         version: 0.39.3(@cloudflare/workers-types@4.20260418.1)
       hono:
         specifier: ^4.7.0
         version: 4.12.14
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -353,6 +359,9 @@ importers:
       drizzle-orm:
         specifier: ^0.39.0
         version: 0.39.3(@cloudflare/workers-types@4.20260418.1)
+      hono:
+        specifier: ^4.6.0
+        version: 4.12.14
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -1417,18 +1426,6 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
-
-  '@oslojs/asn1@1.0.0':
-    resolution: {integrity: sha512-zw/wn0sj0j0QKbIXfIlnEcTviaCzYOY3V5rAyjR6YtOByFtJiT574+8p9Wlach0lZH9fddD4yb9laEAIl4vXQA==}
-
-  '@oslojs/binary@1.0.0':
-    resolution: {integrity: sha512-9RCU6OwXU6p67H4NODbuxv2S3eenuQ4/WFLrsq+K/k682xrznH5EVWA7N4VFk9VYVcbFtKqur5YQQZc0ySGhsQ==}
-
-  '@oslojs/crypto@1.0.1':
-    resolution: {integrity: sha512-7n08G8nWjAr/Yu3vu9zzrd0L9XnrJfpMioQcvCMxBIiF5orECHe5/3J0jmXRVvgfqMm/+4oxlQ+Sq39COYLcNQ==}
-
-  '@oslojs/encoding@1.1.0':
-    resolution: {integrity: sha512-70wQhgYmndg4GCPxPPxPGevRKqTIJ2Nh4OkiMWmDAVYsTQ+Ta7Sq+rPevXyXGdzr30/qZBnyOalCszoMxlyldQ==}
 
   '@petamoriken/float16@3.9.3':
     resolution: {integrity: sha512-8awtpHXCx/bNpFt4mt2xdkgtgVvKqty8VbjHI/WWWQuEw+KLzFot3f4+LkQY9YmOtq7A5GdOnqoIC8Pdygjk2g==}
@@ -2503,10 +2500,6 @@ packages:
 
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
-
-  lucia@3.2.2:
-    resolution: {integrity: sha512-P1FlFBGCMPMXu+EGdVD9W4Mjm0DqsusmKgO7Xc33mI5X1bklmsQb0hfzPhXomQr9waWIBDsiOjvr1e6BTaUqpA==}
-    deprecated: This package has been deprecated. Please see https://lucia-auth.com/lucia-v3/migrate.
 
   magic-string@0.25.9:
     resolution: {integrity: sha512-RmF0AsMzgt25qzqqLc1+MbHmhdx0ojF2Fvs4XnOqz2ZOBXzzkEwc/dJQZCYHAn7v1jbVOjAZfK8msRn4BxO4VQ==}
@@ -3617,19 +3610,6 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
-  '@oslojs/asn1@1.0.0':
-    dependencies:
-      '@oslojs/binary': 1.0.0
-
-  '@oslojs/binary@1.0.0': {}
-
-  '@oslojs/crypto@1.0.1':
-    dependencies:
-      '@oslojs/asn1': 1.0.0
-      '@oslojs/binary': 1.0.0
-
-  '@oslojs/encoding@1.1.0': {}
-
   '@petamoriken/float16@3.9.3': {}
 
   '@pkgjs/parseargs@0.11.0':
@@ -4650,11 +4630,6 @@ snapshots:
   loupe@3.2.1: {}
 
   lru-cache@10.4.3: {}
-
-  lucia@3.2.2:
-    dependencies:
-      '@oslojs/crypto': 1.0.1
-      '@oslojs/encoding': 1.1.0
 
   magic-string@0.25.9:
     dependencies:

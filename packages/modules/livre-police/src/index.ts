@@ -1,3 +1,4 @@
+import { Hono } from 'hono'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, desc } from 'drizzle-orm'
 import type { EventBus } from '@rebond/event-bus'
@@ -6,6 +7,29 @@ import { computeChainedHash, generateUuidV7 } from '@rebond/utils'
 import { policeLedger } from './schema.js'
 
 export { policeLedger } from './schema.js'
+
+/**
+ * Hono routes for the livre de police module.
+ */
+export function createLivrePoliceRoutes(db: DrizzleD1Database) {
+  const app = new Hono()
+
+  // GET / — list all entries for the shop, ordered by entry_number
+  app.get('/', async (c) => {
+    const shopId = c.req.header('X-Shop-Id')
+    if (!shopId) return c.json({ error: 'Shop ID requis' }, 400)
+
+    const entries = await db
+      .select()
+      .from(policeLedger)
+      .where(eq(policeLedger.shopId, shopId))
+      .orderBy(desc(policeLedger.entryNumber))
+
+    return c.json(entries)
+  })
+
+  return app
+}
 
 export interface PoliceLedgerInput {
   shopId: ShopId

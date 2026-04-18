@@ -10,3 +10,4 @@ export {
   bpsSchema,
   uuidSchema,
 } from './schemas.js'
+export { hashPassword, verifyPassword, hashPin, verifyPin } from './password.js'

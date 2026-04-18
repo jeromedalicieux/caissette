@@ -7,7 +7,7 @@ export const users = sqliteTable(
     shopId: text('shop_id').notNull(),
     email: text('email').notNull(),
     name: text('name').notNull(),
-    role: text('role').notNull(),
+    role: text('role').notNull(), // 'owner' | 'manager' | 'cashier'
     pinHash: text('pin_hash'),
     passwordHash: text('password_hash').notNull(),
     createdAt: integer('created_at').notNull(),
@@ -19,5 +19,7 @@ export const users = sqliteTable(
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
+  shopId: text('shop_id').notNull(),
   expiresAt: integer('expires_at').notNull(),
+  createdAt: integer('created_at').notNull(),
 })

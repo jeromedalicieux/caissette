@@ -1,14 +1,17 @@
-<svelte:head>
-  <title>Rebond — Caisse dépôt-vente</title>
-  <meta name="description" content="Logiciel de caisse SaaS pour dépôt-vente, conforme ISCA et TVA sur marge." />
-</svelte:head>
+<script lang="ts">
+  import { authStore } from '$lib/stores/auth.svelte'
+  import { goto } from '$app/navigation'
+  import { onMount } from 'svelte'
 
-<main class="flex min-h-screen items-center justify-center bg-gray-50">
-  <div class="text-center">
-    <h1 class="text-4xl font-bold text-blue-700">Rebond</h1>
-    <p class="mt-2 text-lg text-gray-600">Caisse dépôt-vente</p>
-    <a href="/caisse" class="mt-6 inline-block rounded-lg bg-blue-600 px-6 py-3 text-white hover:bg-blue-700">
-      Accéder à la caisse
-    </a>
-  </div>
-</main>
+  onMount(() => {
+    if (authStore.isAuthenticated) {
+      goto('/caisse')
+    } else {
+      goto('/login')
+    }
+  })
+</script>
+
+<div class="flex min-h-screen items-center justify-center">
+  <p class="text-gray-500">Redirection...</p>
+</div>

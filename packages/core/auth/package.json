@@ -11,10 +11,10 @@
   },
   "dependencies": {
     "@rebond/types": "workspace:*",
-    "@rebond/tenant": "workspace:*",
-    "lucia": "^3.2.0",
+    "@rebond/utils": "workspace:*",
     "drizzle-orm": "^0.39.0",
-    "hono": "^4.7.0"
+    "hono": "^4.7.0",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "typescript": "^5.7.3"
