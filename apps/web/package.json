@@ -1,0 +1,29 @@
+{
+  "name": "@rebond/web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@rebond/types": "workspace:*",
+    "@rebond/utils": "workspace:*",
+    "dexie": "^4.0.11"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-cloudflare": "^5.0.0",
+    "@sveltejs/kit": "^2.16.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "svelte": "^5.16.0",
+    "svelte-check": "^4.1.0",
+    "tailwindcss": "^4.1.0",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.0"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@rebond/auth",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rebond/types": "workspace:*",
+    "@rebond/tenant": "workspace:*",
+    "lucia": "^3.2.0",
+    "drizzle-orm": "^0.39.0",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

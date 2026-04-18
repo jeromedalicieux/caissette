@@ -1,0 +1,22 @@
+{
+  "name": "@rebond/isca",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rebond/types": "workspace:*",
+    "@rebond/utils": "workspace:*",
+    "@rebond/audit-log": "workspace:*",
+    "@rebond/event-bus": "workspace:*",
+    "drizzle-orm": "^0.39.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.svelte-kit/
+.wrangler/
+.turbo/
+
+# Environment
+.env
+.env.*
+!.env.example
+.dev.vars
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test
+coverage/
+
+# Logs
+*.log

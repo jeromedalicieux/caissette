@@ -1,0 +1,26 @@
+{
+  "name": "@rebond/migrations",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rebond/audit-log": "workspace:*",
+    "@rebond/tenant": "workspace:*",
+    "@rebond/auth": "workspace:*",
+    "@rebond/isca": "workspace:*",
+    "@rebond/depots": "workspace:*",
+    "@rebond/catalog": "workspace:*",
+    "@rebond/caisse": "workspace:*",
+    "@rebond/livre-police": "workspace:*",
+    "drizzle-orm": "^0.39.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.0",
+    "typescript": "^5.7.3"
+  }
+}

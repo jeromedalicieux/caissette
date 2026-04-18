@@ -1,0 +1,23 @@
+{
+  "name": "@rebond/catalog",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rebond/types": "workspace:*",
+    "@rebond/utils": "workspace:*",
+    "@rebond/event-bus": "workspace:*",
+    "drizzle-orm": "^0.39.0",
+    "hono": "^4.7.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

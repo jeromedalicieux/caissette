@@ -1,0 +1,41 @@
+{
+  "name": "rebond-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-15",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // D1 Database
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "rebond-db",
+      "database_id": "TODO_REPLACE_WITH_ACTUAL_ID"
+    }
+  ],
+
+  // R2 Storage (archives, documents)
+  "r2_buckets": [
+    {
+      "binding": "R2",
+      "bucket_name": "rebond-storage"
+    }
+  ],
+
+  // KV Namespace (sessions, config cache)
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "TODO_REPLACE_WITH_ACTUAL_ID"
+    }
+  ],
+
+  // Queues (async events)
+  "queues": {
+    "producers": [
+      {
+        "binding": "EVENTS_QUEUE",
+        "queue": "rebond-events"
+      }
+    ]
+  }
+}
