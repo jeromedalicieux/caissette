@@ -11,17 +11,19 @@ export interface EventMap {
   }
   'item.created': {
     itemId: ItemId
+    shopId: ShopId
     depositorId: DepositorId | null
     contractId: string | null
     price: Cents
   }
   'item.sold': {
     saleId: SaleId
+    shopId: ShopId
     itemId: ItemId
     price: Cents
     paymentMethod: PaymentMethod
   }
-  'item.returned': { itemId: ItemId; reason: string }
+  'item.returned': { itemId: ItemId; shopId: ShopId; depositorId: DepositorId | null; reason: string }
   'sale.completed': {
     saleId: SaleId
     total: Cents

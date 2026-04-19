@@ -61,7 +61,7 @@ export function registerPoliceLedgerListeners(
     if (!depositor) return
 
     await createPoliceLedgerEntry(db, {
-      shopId: '' as ShopId, // Will be resolved from item context
+      shopId: payload.shopId,
       entryType: 'entry',
       itemId: payload.itemId,
       depositorId: payload.depositorId,
@@ -73,7 +73,7 @@ export function registerPoliceLedgerListeners(
 
   eventBus.on('item.sold', async (payload) => {
     await createPoliceLedgerEntry(db, {
-      shopId: '' as ShopId,
+      shopId: payload.shopId,
       entryType: 'exit',
       itemId: payload.itemId,
       depositorId: null,
@@ -82,6 +82,21 @@ export function registerPoliceLedgerListeners(
       depositorIdDocument: 'N/A',
       saleId: payload.saleId,
       exitReason: 'sold',
+    })
+  })
+
+  eventBus.on('item.returned', async (payload) => {
+    const depositor = payload.depositorId ? await resolveDepositorInfo(payload.depositorId) : null
+
+    await createPoliceLedgerEntry(db, {
+      shopId: payload.shopId,
+      entryType: 'exit',
+      itemId: payload.itemId,
+      depositorId: payload.depositorId ?? null,
+      description: `Article restitué — ${payload.reason}`,
+      depositorName: depositor?.name ?? 'N/A',
+      depositorIdDocument: depositor?.idDocument ?? 'N/A',
+      exitReason: 'returned',
     })
   })
 }
@@ -146,7 +161,7 @@ export const MODULE_DEFINITION = {
   dependencies: ['catalog', 'depots'],
   events: {
     emits: [],
-    listens: ['item.created', 'item.sold'],
+    listens: ['item.created', 'item.sold', 'item.returned'],
   },
   pricing: { tier: 'core' as const },
 }

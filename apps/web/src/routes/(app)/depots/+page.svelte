@@ -6,6 +6,7 @@
   let showForm = $state(false)
   let loading = $state(true)
   let error = $state('')
+  let editingId = $state<string | null>(null)
 
   // Form fields
   let firstName = $state('')
@@ -29,21 +30,54 @@
     loading = false
   }
 
-  async function handleCreate() {
+  function resetForm() {
+    firstName = lastName = email = phone = address = idDocNumber = ''
+    idDocType = 'cni'
+    commissionRate = 4000
+    editingId = null
+  }
+
+  function startEdit(dep: any) {
+    editingId = dep.id
+    firstName = dep.first_name ?? dep.firstName ?? ''
+    lastName = dep.last_name ?? dep.lastName ?? ''
+    email = dep.email ?? ''
+    phone = dep.phone ?? ''
+    address = dep.address ?? ''
+    idDocType = dep.id_document_type ?? dep.idDocumentType ?? 'cni'
+    idDocNumber = dep.id_document_number ?? dep.idDocumentNumber ?? ''
+    commissionRate = dep.default_commission_rate ?? dep.defaultCommissionRate ?? 4000
+    showForm = true
+  }
+
+  async function handleSubmit() {
     error = ''
     try {
-      await depositors.create({
-        firstName,
-        lastName,
-        email: email || undefined,
-        phone: phone || undefined,
-        address: address || undefined,
-        idDocumentType: idDocType,
-        idDocumentNumber: idDocNumber,
-        defaultCommissionRate: commissionRate,
-      })
+      if (editingId) {
+        await depositors.update(editingId, {
+          firstName,
+          lastName,
+          email: email || undefined,
+          phone: phone || undefined,
+          address: address || undefined,
+          idDocumentType: idDocType,
+          idDocumentNumber: idDocNumber,
+          defaultCommissionRate: commissionRate,
+        })
+      } else {
+        await depositors.create({
+          firstName,
+          lastName,
+          email: email || undefined,
+          phone: phone || undefined,
+          address: address || undefined,
+          idDocumentType: idDocType,
+          idDocumentNumber: idDocNumber,
+          defaultCommissionRate: commissionRate,
+        })
+      }
       showForm = false
-      firstName = lastName = email = phone = address = idDocNumber = ''
+      resetForm()
       await loadList()
     } catch (e: any) {
       error = e.message
@@ -58,7 +92,7 @@
 <div class="p-6">
   <div class="mb-6 flex items-center justify-between">
     <h1 class="text-2xl font-bold text-gray-900">Déposants</h1>
-    <button onclick={() => showForm = !showForm}
+    <button onclick={() => { if (showForm) { showForm = false; resetForm() } else { showForm = true } }}
       class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
       {showForm ? 'Annuler' : '+ Nouveau déposant'}
     </button>
@@ -69,9 +103,9 @@
   {/if}
 
   {#if showForm}
-    <form onsubmit={(e) => { e.preventDefault(); handleCreate() }}
+    <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}
       class="mb-6 rounded-xl bg-white p-6 shadow-sm">
-      <h2 class="mb-4 text-lg font-semibold">Nouveau déposant</h2>
+      <h2 class="mb-4 text-lg font-semibold">{editingId ? 'Modifier le déposant' : 'Nouveau déposant'}</h2>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-sm font-medium text-gray-700">Prénom *</label>
@@ -113,7 +147,7 @@
         </div>
       </div>
       <button type="submit" class="mt-4 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700">
-        Créer le déposant
+        {editingId ? 'Enregistrer' : 'Créer le déposant'}
       </button>
     </form>
   {/if}
@@ -132,6 +166,7 @@
             <th class="px-4 py-3">Email</th>
             <th class="px-4 py-3">Téléphone</th>
             <th class="px-4 py-3">Commission</th>
+            <th class="px-4 py-3">Actions</th>
           </tr>
         </thead>
         <tbody class="divide-y">
@@ -142,6 +177,10 @@
               <td class="px-4 py-3 text-gray-600">{dep.email ?? '-'}</td>
               <td class="px-4 py-3 text-gray-600">{dep.phone ?? '-'}</td>
               <td class="px-4 py-3">{((dep.default_commission_rate ?? dep.defaultCommissionRate ?? 0) / 100)}%</td>
+              <td class="px-4 py-3">
+                <button onclick={() => startEdit(dep)}
+                  class="text-sm text-blue-600 hover:text-blue-800">Modifier</button>
+              </td>
             </tr>
           {/each}
         </tbody>

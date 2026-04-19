@@ -156,6 +156,7 @@ export function createCaisseRoutes(db: DrizzleD1Database, eventBus: EventBus) {
       if (item.itemId) {
         await eventBus.emit('item.sold', {
           saleId,
+          shopId,
           itemId: item.itemId as ItemId,
           price: item.price as Cents,
           paymentMethod: body.paymentMethod as PaymentMethod,

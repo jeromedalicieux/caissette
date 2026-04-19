@@ -24,6 +24,16 @@ export const createItemSchema = z.object({
   vatRate: z.number().int().min(0).max(10000),
 })
 
+export const updateItemSchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  brand: z.string().optional(),
+  size: z.string().optional(),
+  condition: z.enum(['new', 'excellent', 'good', 'fair']).optional(),
+  currentPrice: z.number().int().positive().optional(),
+})
+
 /**
  * Generate a barcode SKU: RB-YYYYMMDD-XXXX
  */
@@ -83,6 +93,7 @@ export function createCatalogRoutes(db: DrizzleD1Database, eventBus: EventBus) {
 
     await eventBus.emit('item.created', {
       itemId: id,
+      shopId,
       depositorId: (body.depositorId as DepositorId) ?? null,
       contractId: body.contractId ?? null,
       price: body.initialPrice as Cents,
@@ -101,6 +112,79 @@ export function createCatalogRoutes(db: DrizzleD1Database, eventBus: EventBus) {
       .where(and(eq(items.id, id), eq(items.shopId, shopId)))
     if (result.length === 0) return c.json({ error: 'Not found' }, 404)
     return c.json(result[0])
+  })
+
+  // Update item (only if available)
+  app.patch('/:id', async (c) => {
+    const shopId = c.req.header('X-Shop-Id') as ShopId
+    const id = c.req.param('id')
+    const existing = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.id, id), eq(items.shopId, shopId)))
+    const item = existing[0]
+    if (!item) return c.json({ error: 'Not found' }, 404)
+    if (item.status !== 'available') return c.json({ error: 'Seuls les articles en vente peuvent être modifiés' }, 400)
+
+    const body = updateItemSchema.parse(await c.req.json())
+    const updates: Record<string, unknown> = {}
+    if (body.name !== undefined) updates.name = body.name
+    if (body.description !== undefined) updates.description = body.description
+    if (body.category !== undefined) updates.category = body.category
+    if (body.brand !== undefined) updates.brand = body.brand
+    if (body.size !== undefined) updates.size = body.size
+    if (body.condition !== undefined) updates.condition = body.condition
+    if (body.currentPrice !== undefined) {
+      updates.currentPrice = body.currentPrice
+      updates.statusChangedAt = Date.now()
+    }
+
+    if (Object.keys(updates).length === 0) return c.json({ error: 'Aucun champ à modifier' }, 400)
+    await db.update(items).set(updates).where(eq(items.id, id))
+    return c.json({ ok: true })
+  })
+
+  // Soft-delete item (mark as destroyed)
+  app.delete('/:id', async (c) => {
+    const shopId = c.req.header('X-Shop-Id') as ShopId
+    const id = c.req.param('id')
+    const existing = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.id, id), eq(items.shopId, shopId)))
+    const toDelete = existing[0]
+    if (!toDelete) return c.json({ error: 'Not found' }, 404)
+    if (toDelete.status !== 'available') return c.json({ error: 'Seuls les articles en vente peuvent être supprimés' }, 400)
+
+    const now = Date.now()
+    await db.update(items).set({ status: 'destroyed', statusChangedAt: now }).where(eq(items.id, id))
+    return c.json({ ok: true })
+  })
+
+  // Return item to depositor
+  app.patch('/:id/return', async (c) => {
+    const shopId = c.req.header('X-Shop-Id') as ShopId
+    const id = c.req.param('id')
+    const existing = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.id, id), eq(items.shopId, shopId)))
+    const toReturn = existing[0]
+    if (!toReturn) return c.json({ error: 'Not found' }, 404)
+    if (toReturn.status !== 'available') return c.json({ error: 'Seuls les articles en vente peuvent être restitués' }, 400)
+    if (!toReturn.depositorId) return c.json({ error: 'Cet article n\'a pas de déposant' }, 400)
+
+    const now = Date.now()
+    await db.update(items).set({ status: 'returned', statusChangedAt: now }).where(eq(items.id, id))
+
+    await eventBus.emit('item.returned', {
+      itemId: id as ItemId,
+      shopId,
+      depositorId: toReturn.depositorId as DepositorId,
+      reason: 'Restitution au déposant',
+    })
+
+    return c.json({ ok: true })
   })
 
   return app

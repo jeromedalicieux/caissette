@@ -19,6 +19,7 @@
   const navItems = [
     { href: '/caisse', label: 'Caisse', icon: '🏪' },
     { href: '/depots', label: 'Dépôts', icon: '👤' },
+    { href: '/contrats', label: 'Contrats', icon: '📝' },
     { href: '/articles', label: 'Articles', icon: '📦' },
     { href: '/ventes', label: 'Ventes', icon: '📋' },
     { href: '/livre-police', label: 'Livre de police', icon: '📖' },

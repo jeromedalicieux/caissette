@@ -125,6 +125,13 @@ export const depositors = {
       body: JSON.stringify(data),
     })
   },
+
+  update(id: string, data: Record<string, unknown>) {
+    return request<{ ok: boolean }>(`/api/depositors/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
 }
 
 // ─── Items ───
@@ -141,6 +148,51 @@ export const items = {
   create(data: Record<string, unknown>) {
     return request<{ id: string; sku: string }>('/api/items', {
       method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  update(id: string, data: Record<string, unknown>) {
+    return request<{ ok: boolean }>(`/api/items/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  remove(id: string) {
+    return request<{ ok: boolean }>(`/api/items/${id}`, {
+      method: 'DELETE',
+    })
+  },
+
+  returnItem(id: string) {
+    return request<{ ok: boolean }>(`/api/items/${id}/return`, {
+      method: 'PATCH',
+    })
+  },
+}
+
+// ─── Contracts ───
+
+export const contracts = {
+  list() {
+    return request<any[]>('/api/contracts')
+  },
+
+  get(id: string) {
+    return request<any>(`/api/contracts/${id}`)
+  },
+
+  create(data: { depositorId: string; commissionRate: number; expiresAt: number }) {
+    return request<{ id: string; number: string }>('/api/contracts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  update(id: string, data: Record<string, unknown>) {
+    return request<{ ok: boolean }>(`/api/contracts/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     })
   },

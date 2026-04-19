@@ -5,10 +5,11 @@ import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1'
 import { createEventBus } from '@rebond/event-bus'
 import { createAuthRoutes, createAuthMiddleware, requireAuth } from '@rebond/auth'
 import { tenantMiddleware, createTenantRoutes } from '@rebond/tenant'
-import { createDepotsRoutes } from '@rebond/depots'
+import { createDepotsRoutes, createContractsRoutes } from '@rebond/depots'
 import { createCatalogRoutes } from '@rebond/catalog'
 import { createCaisseRoutes } from '@rebond/caisse'
-import { createLivrePoliceRoutes } from '@rebond/livre-police'
+import { createLivrePoliceRoutes, registerPoliceLedgerListeners } from '@rebond/livre-police'
+import { eq } from 'drizzle-orm'
 
 type Env = {
   DB: D1Database
@@ -24,7 +25,7 @@ app.use('*', logger())
 app.use(
   '*',
   cors({
-    origin: ['https://app.rebond.fr', 'https://app-preview.rebond.fr', 'http://localhost:5173'],
+    origin: ['https://app.rebond.fr', 'https://app-preview.rebond.fr', 'http://localhost:5173', 'https://rebond-web-488.pages.dev'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Shop-Id', 'X-User-Id'],
     credentials: true,
@@ -40,6 +41,37 @@ app.route('/auth', createAuthRoutes(getDb))
 // Onboarding: create shop (no auth needed for initial setup)
 app.route('/shops', createTenantRoutes(getDb))
 
+// ─── Helper: create a shared eventBus with police ledger listeners ───
+function createWiredEventBus(db: DrizzleD1Database) {
+  const eventBus = createEventBus()
+
+  // Resolve depositor info for police ledger entries
+  const resolveDepositorInfo = async (depositorId: string) => {
+    const { depositors } = await import('@rebond/depots')
+    const result = await db.select().from(depositors).where(eq(depositors.id, depositorId)).limit(1)
+    const d = result[0]
+    if (!d) return null
+    return {
+      name: `${d.firstName} ${d.lastName}`,
+      idDocument: `${d.idDocumentType}: ${d.idDocumentNumber}`,
+    }
+  }
+
+  registerPoliceLedgerListeners(db, eventBus, resolveDepositorInfo)
+  return eventBus
+}
+
+// ─── Helper: forward request to a sub-app ───
+function forwardToSubApp(c: any, routes: any, prefix: string) {
+  const url = new URL(c.req.url)
+  const path = url.pathname.replace(prefix, '') || '/'
+  const newUrl = new URL(path, url.origin)
+  newUrl.search = url.search
+  const req = new Request(newUrl.toString(), c.req.raw)
+  req.headers.set('X-Shop-Id', (c as any).get('user').shopId)
+  return routes.fetch(req)
+}
+
 // ─── Protected API ───
 const api = new Hono<{ Bindings: Env }>()
 api.use('*', createAuthMiddleware(getDb))
@@ -49,7 +81,6 @@ api.use('*', requireAuth)
 api.get('/shop', async (c) => {
   const db = getDb(c)
   const { shops } = await import('@rebond/tenant')
-  const { eq } = await import('drizzle-orm')
   const user = (c as any).get('user')
   const result = await db.select().from(shops).where(eq(shops.id, user.shopId)).limit(1)
   if (result.length === 0) return c.json({ error: 'Boutique introuvable' }, 404)
@@ -59,7 +90,6 @@ api.get('/shop', async (c) => {
 api.patch('/shop', async (c) => {
   const db = getDb(c)
   const { shops } = await import('@rebond/tenant')
-  const { eq } = await import('drizzle-orm')
   const user = (c as any).get('user')
   const body = await c.req.json()
   await db.update(shops).set(body).where(eq(shops.id, user.shopId))
@@ -69,21 +99,35 @@ api.patch('/shop', async (c) => {
 // Depositors
 api.all('/depositors/*', async (c) => {
   const db = getDb(c)
-  const eventBus = createEventBus()
+  const eventBus = createWiredEventBus(db)
+  const routes = createDepotsRoutes(db, eventBus)
+  return forwardToSubApp(c, routes, '/api/depositors')
+})
+
+api.all('/depositors', async (c) => {
+  const db = getDb(c)
+  const eventBus = createWiredEventBus(db)
   const routes = createDepotsRoutes(db, eventBus)
   const url = new URL(c.req.url)
-  const path = url.pathname.replace('/api/depositors', '') || '/'
-  const newUrl = new URL(path, url.origin)
+  const newUrl = new URL('/', url.origin)
   newUrl.search = url.search
   const req = new Request(newUrl.toString(), c.req.raw)
   req.headers.set('X-Shop-Id', (c as any).get('user').shopId)
   return routes.fetch(req)
 })
 
-api.all('/depositors', async (c) => {
+// Contracts
+api.all('/contracts/*', async (c) => {
   const db = getDb(c)
-  const eventBus = createEventBus()
-  const routes = createDepotsRoutes(db, eventBus)
+  const eventBus = createWiredEventBus(db)
+  const routes = createContractsRoutes(db, eventBus)
+  return forwardToSubApp(c, routes, '/api/contracts')
+})
+
+api.all('/contracts', async (c) => {
+  const db = getDb(c)
+  const eventBus = createWiredEventBus(db)
+  const routes = createContractsRoutes(db, eventBus)
   const url = new URL(c.req.url)
   const newUrl = new URL('/', url.origin)
   newUrl.search = url.search
@@ -95,20 +139,14 @@ api.all('/depositors', async (c) => {
 // Items
 api.all('/items/*', async (c) => {
   const db = getDb(c)
-  const eventBus = createEventBus()
+  const eventBus = createWiredEventBus(db)
   const routes = createCatalogRoutes(db, eventBus)
-  const url = new URL(c.req.url)
-  const path = url.pathname.replace('/api/items', '') || '/'
-  const newUrl = new URL(path, url.origin)
-  newUrl.search = url.search
-  const req = new Request(newUrl.toString(), c.req.raw)
-  req.headers.set('X-Shop-Id', (c as any).get('user').shopId)
-  return routes.fetch(req)
+  return forwardToSubApp(c, routes, '/api/items')
 })
 
 api.all('/items', async (c) => {
   const db = getDb(c)
-  const eventBus = createEventBus()
+  const eventBus = createWiredEventBus(db)
   const routes = createCatalogRoutes(db, eventBus)
   const url = new URL(c.req.url)
   const newUrl = new URL('/', url.origin)
@@ -121,20 +159,14 @@ api.all('/items', async (c) => {
 // Sales
 api.all('/sales/*', async (c) => {
   const db = getDb(c)
-  const eventBus = createEventBus()
+  const eventBus = createWiredEventBus(db)
   const routes = createCaisseRoutes(db, eventBus)
-  const url = new URL(c.req.url)
-  const path = url.pathname.replace('/api/sales', '') || '/'
-  const newUrl = new URL(path, url.origin)
-  newUrl.search = url.search
-  const req = new Request(newUrl.toString(), c.req.raw)
-  req.headers.set('X-Shop-Id', (c as any).get('user').shopId)
-  return routes.fetch(req)
+  return forwardToSubApp(c, routes, '/api/sales')
 })
 
 api.all('/sales', async (c) => {
   const db = getDb(c)
-  const eventBus = createEventBus()
+  const eventBus = createWiredEventBus(db)
   const routes = createCaisseRoutes(db, eventBus)
   const url = new URL(c.req.url)
   const newUrl = new URL('/', url.origin)
@@ -148,13 +180,7 @@ api.all('/sales', async (c) => {
 api.all('/police-ledger/*', async (c) => {
   const db = getDb(c)
   const routes = createLivrePoliceRoutes(db)
-  const url = new URL(c.req.url)
-  const path = url.pathname.replace('/api/police-ledger', '') || '/'
-  const newUrl = new URL(path, url.origin)
-  newUrl.search = url.search
-  const req = new Request(newUrl.toString(), c.req.raw)
-  req.headers.set('X-Shop-Id', (c as any).get('user').shopId)
-  return routes.fetch(req)
+  return forwardToSubApp(c, routes, '/api/police-ledger')
 })
 
 api.all('/police-ledger', async (c) => {

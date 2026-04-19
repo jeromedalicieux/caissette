@@ -8,6 +8,7 @@
   let loading = $state(true)
   let error = $state('')
   let statusFilter = $state('available')
+  let editingId = $state<string | null>(null)
 
   // Form
   let name = $state('')
@@ -16,6 +17,7 @@
   let brand = $state('')
   let size = $state('')
   let initialPrice = $state('')
+  let currentPrice = $state('')
   let depositorId = $state('')
   let vatRegime = $state('deposit')
   let vatRate = $state(2000)
@@ -40,23 +42,77 @@
     } catch { /* ignore */ }
   }
 
-  async function handleCreate() {
+  function resetForm() {
+    name = description = category = brand = size = initialPrice = currentPrice = depositorId = ''
+    vatRegime = 'deposit'
+    vatRate = 2000
+    editingId = null
+  }
+
+  function startEdit(item: any) {
+    editingId = item.id
+    name = item.name ?? ''
+    description = item.description ?? ''
+    category = item.category ?? ''
+    brand = item.brand ?? ''
+    size = item.size ?? ''
+    const price = item.current_price ?? item.currentPrice ?? 0
+    currentPrice = (price / 100).toFixed(2)
+    initialPrice = ''
+    depositorId = item.depositor_id ?? item.depositorId ?? ''
+    vatRegime = item.vat_regime ?? item.vatRegime ?? 'deposit'
+    vatRate = item.vat_rate ?? item.vatRate ?? 2000
+    showForm = true
+  }
+
+  async function handleSubmit() {
     error = ''
     try {
-      const priceInCents = Math.round(parseFloat(initialPrice) * 100)
-      await items.create({
-        name,
-        description: description || undefined,
-        category: category || undefined,
-        brand: brand || undefined,
-        size: size || undefined,
-        initialPrice: priceInCents,
-        depositorId: depositorId || undefined,
-        vatRegime,
-        vatRate,
-      })
+      if (editingId) {
+        const data: Record<string, unknown> = {}
+        if (name) data.name = name
+        if (description) data.description = description
+        if (category) data.category = category
+        if (brand) data.brand = brand
+        if (size) data.size = size
+        if (currentPrice) data.currentPrice = Math.round(parseFloat(currentPrice) * 100)
+        await items.update(editingId, data)
+      } else {
+        const priceInCents = Math.round(parseFloat(initialPrice) * 100)
+        await items.create({
+          name,
+          description: description || undefined,
+          category: category || undefined,
+          brand: brand || undefined,
+          size: size || undefined,
+          initialPrice: priceInCents,
+          depositorId: depositorId || undefined,
+          vatRegime,
+          vatRate,
+        })
+      }
       showForm = false
-      name = description = category = brand = size = initialPrice = depositorId = ''
+      resetForm()
+      await loadList()
+    } catch (e: any) {
+      error = e.message
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Supprimer cet article ? (il sera marqué comme détruit)')) return
+    try {
+      await items.remove(id)
+      await loadList()
+    } catch (e: any) {
+      error = e.message
+    }
+  }
+
+  async function handleReturn(id: string) {
+    if (!confirm('Restituer cet article au déposant ?')) return
+    try {
+      await items.returnItem(id)
       await loadList()
     } catch (e: any) {
       error = e.message
@@ -81,9 +137,10 @@
         <option value="available">En vente</option>
         <option value="sold">Vendus</option>
         <option value="returned">Restitués</option>
+        <option value="destroyed">Supprimés</option>
       </select>
     </div>
-    <button onclick={() => showForm = !showForm}
+    <button onclick={() => { if (showForm) { showForm = false; resetForm() } else { showForm = true } }}
       class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
       {showForm ? 'Annuler' : '+ Nouvel article'}
     </button>
@@ -94,9 +151,9 @@
   {/if}
 
   {#if showForm}
-    <form onsubmit={(e) => { e.preventDefault(); handleCreate() }}
+    <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}
       class="mb-6 rounded-xl bg-white p-6 shadow-sm">
-      <h2 class="mb-4 text-lg font-semibold">Nouvel article</h2>
+      <h2 class="mb-4 text-lg font-semibold">{editingId ? 'Modifier l\'article' : 'Nouvel article'}</h2>
       <div class="grid grid-cols-2 gap-4">
         <div class="col-span-2">
           <label class="block text-sm font-medium text-gray-700">Nom *</label>
@@ -114,30 +171,37 @@
           <label class="block text-sm font-medium text-gray-700">Taille</label>
           <input type="text" bind:value={size} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="M, 42..." />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Prix (€) *</label>
-          <input type="number" step="0.01" min="0" bind:value={initialPrice} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Déposant</label>
-          <select bind:value={depositorId} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-            <option value="">Stock propre</option>
-            {#each depList as dep}
-              <option value={dep.id}>{dep.first_name ?? dep.firstName} {dep.last_name ?? dep.lastName}</option>
-            {/each}
-          </select>
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Régime TVA</label>
-          <select bind:value={vatRegime} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-            <option value="deposit">TVA sur marge (dépôt)</option>
-            <option value="resale_item_by_item">TVA marge (achat/revente)</option>
-            <option value="normal">TVA normale</option>
-          </select>
-        </div>
+        {#if editingId}
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Prix actuel (€)</label>
+            <input type="number" step="0.01" min="0" bind:value={currentPrice} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+        {:else}
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Prix (€) *</label>
+            <input type="number" step="0.01" min="0" bind:value={initialPrice} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Déposant</label>
+            <select bind:value={depositorId} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+              <option value="">Stock propre</option>
+              {#each depList as dep}
+                <option value={dep.id}>{dep.first_name ?? dep.firstName} {dep.last_name ?? dep.lastName}</option>
+              {/each}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Régime TVA</label>
+            <select bind:value={vatRegime} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+              <option value="deposit">TVA sur marge (dépôt)</option>
+              <option value="resale_item_by_item">TVA marge (achat/revente)</option>
+              <option value="normal">TVA normale</option>
+            </select>
+          </div>
+        {/if}
       </div>
       <button type="submit" class="mt-4 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700">
-        Ajouter l'article
+        {editingId ? 'Enregistrer' : 'Ajouter l\'article'}
       </button>
     </form>
   {/if}
@@ -156,6 +220,9 @@
             <th class="px-4 py-3">Catégorie</th>
             <th class="px-4 py-3">Prix</th>
             <th class="px-4 py-3">Statut</th>
+            {#if statusFilter === 'available'}
+              <th class="px-4 py-3">Actions</th>
+            {/if}
           </tr>
         </thead>
         <tbody class="divide-y">
@@ -167,10 +234,24 @@
               <td class="px-4 py-3">{formatPrice(item.current_price ?? item.currentPrice)}</td>
               <td class="px-4 py-3">
                 <span class="rounded-full px-2 py-0.5 text-xs font-medium
-                  {item.status === 'available' ? 'bg-green-100 text-green-700' : item.status === 'sold' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}">
-                  {item.status}
+                  {item.status === 'available' ? 'bg-green-100 text-green-700' : item.status === 'sold' ? 'bg-blue-100 text-blue-700' : item.status === 'returned' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'}">
+                  {item.status === 'available' ? 'En vente' : item.status === 'sold' ? 'Vendu' : item.status === 'returned' ? 'Restitué' : item.status === 'destroyed' ? 'Supprimé' : item.status}
                 </span>
               </td>
+              {#if statusFilter === 'available'}
+                <td class="px-4 py-3">
+                  <div class="flex gap-2">
+                    <button onclick={() => startEdit(item)}
+                      class="text-sm text-blue-600 hover:text-blue-800">Modifier</button>
+                    {#if item.depositor_id ?? item.depositorId}
+                      <button onclick={() => handleReturn(item.id)}
+                        class="text-sm text-orange-600 hover:text-orange-800">Restituer</button>
+                    {/if}
+                    <button onclick={() => handleDelete(item.id)}
+                      class="text-sm text-red-600 hover:text-red-800">Supprimer</button>
+                  </div>
+                </td>
+              {/if}
             </tr>
           {/each}
         </tbody>
