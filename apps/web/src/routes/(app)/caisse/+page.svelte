@@ -10,15 +10,18 @@
   let error = $state('')
   let success = $state('')
   let processing = $state(false)
+  let loading = $state(true)
 
   onMount(loadItems)
 
   async function loadItems() {
+    loading = true
     try {
       availableItems = await items.list('available')
     } catch (e: any) {
       error = e.message
     }
+    loading = false
   }
 
   function filteredItems() {
@@ -57,7 +60,13 @@
   }
 
   function formatPrice(cents: number) {
-    return (cents / 100).toFixed(2).replace('.', ',') + ' €'
+    return (cents / 100).toFixed(2).replace('.', ',') + ' \u20AC'
+  }
+
+  function vatLabel(regime: string) {
+    if (regime === 'deposit') return 'D\u00E9p\u00F4t'
+    if (regime === 'normal') return 'TVA normale'
+    return 'Marge'
   }
 
   async function handlePayment() {
@@ -82,7 +91,7 @@
         })),
       })
 
-      success = `Vente #${result.receiptNumber} enregistrée — ${formatPrice(cart.total)}`
+      success = `Vente #${result.receiptNumber} enregistr\u00E9e -- ${formatPrice(cart.total)}`
       cart.clear()
       await loadItems()
     } catch (e: any) {
@@ -90,36 +99,75 @@
     }
     processing = false
   }
+
+  const paymentOptions = [
+    { v: 'cash', l: 'Esp\u00E8ces' },
+    { v: 'card', l: 'Carte' },
+    { v: 'check', l: 'Ch\u00E8que' },
+    { v: 'other', l: 'Autre' },
+  ]
 </script>
 
 <svelte:head>
   <title>Caisse — Rebond</title>
 </svelte:head>
 
-<div class="flex h-[calc(100vh)] gap-0">
-  <!-- Left: Article search & selection -->
-  <div class="flex w-1/2 flex-col border-r">
-    <div class="border-b p-4">
-      <input type="text" bind:value={search} placeholder="Rechercher un article (nom, code-barre...)"
-        class="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm" />
+<div class="flex h-[calc(100vh)] flex-col md:flex-row">
+  <!-- Left panel: Catalog -->
+  <div class="flex min-h-0 flex-1 flex-col bg-gray-50">
+    <!-- Search bar -->
+    <div class="p-4 pb-2">
+      <div class="relative">
+        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+          </svg>
+        </div>
+        <input
+          type="text"
+          bind:value={search}
+          placeholder="Rechercher un article..."
+          class="w-full rounded-full bg-white py-2.5 pl-11 pr-4 text-sm shadow-sm outline-none ring-1 ring-gray-200 transition-shadow placeholder:text-gray-400 focus:ring-2 focus:ring-blue-300"
+        />
+      </div>
     </div>
 
-    <div class="flex-1 overflow-auto p-4">
-      {#if filteredItems().length === 0}
-        <p class="text-center text-gray-400">Aucun article trouvé</p>
+    <!-- Product grid -->
+    <div class="flex-1 overflow-auto p-4 pt-2">
+      {#if loading}
+        <!-- Loading skeleton -->
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
+          {#each Array(6) as _}
+            <div class="animate-pulse rounded-xl bg-white p-4 shadow-sm">
+              <div class="mb-3 h-4 w-3/4 rounded bg-gray-200"></div>
+              <div class="mb-2 h-3 w-1/3 rounded bg-gray-100"></div>
+              <div class="h-5 w-1/2 rounded bg-gray-200"></div>
+            </div>
+          {/each}
+        </div>
+      {:else if filteredItems().length === 0}
+        <!-- Empty state -->
+        <div class="flex flex-col items-center justify-center py-16 text-gray-400">
+          <svg class="mb-3 h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 11.625l2.25-2.25M12 11.625l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+          </svg>
+          <p class="text-sm font-medium">Aucun article en vente</p>
+        </div>
       {:else}
-        <div class="grid grid-cols-2 gap-2">
+        <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {#each filteredItems() as item}
-            <button onclick={() => addToCart(item)}
-              class="rounded-lg border bg-white p-3 text-left transition-colors hover:border-blue-300 hover:bg-blue-50">
-              <div class="text-sm font-medium text-gray-900 truncate">{item.name}</div>
-              <div class="mt-1 flex items-center justify-between">
-                <span class="text-xs text-gray-500">{item.sku ?? ''}</span>
-                <span class="font-semibold text-blue-600">{formatPrice(item.current_price ?? item.currentPrice)}</span>
-              </div>
+            <button
+              onclick={() => addToCart(item)}
+              class="group rounded-xl bg-white p-4 text-left shadow-sm transition-shadow hover:shadow-md"
+            >
+              <div class="truncate text-sm font-medium text-gray-900">{item.name}</div>
               {#if item.category}
-                <span class="mt-1 inline-block rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{item.category}</span>
+                <span class="mt-1.5 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.category}</span>
               {/if}
+              <div class="mt-2 flex items-end justify-between">
+                <span class="text-xs text-gray-400">{item.sku ?? ''}</span>
+                <span class="text-lg font-semibold text-blue-600">{formatPrice(item.current_price ?? item.currentPrice)}</span>
+              </div>
             </button>
           {/each}
         </div>
@@ -127,65 +175,103 @@
     </div>
   </div>
 
-  <!-- Right: Cart & Payment -->
-  <div class="flex w-1/2 flex-col bg-white">
-    <div class="border-b p-4">
+  <!-- Right panel: Cart + Payment -->
+  <div class="flex w-full flex-col border-t bg-white md:w-[400px] md:border-l md:border-t-0 lg:w-[440px]">
+    <!-- Cart header -->
+    <div class="flex items-center gap-2 border-b px-5 py-4">
       <h2 class="text-lg font-bold text-gray-900">Panier</h2>
+      {#if cart.count > 0}
+        <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-semibold text-blue-700">
+          {cart.count}
+        </span>
+      {/if}
     </div>
 
-    <div class="flex-1 overflow-auto p-4">
-      {#if error}
-        <div class="mb-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-      {/if}
+    <!-- Messages -->
+    <div class="px-5">
       {#if success}
-        <div class="mb-3 rounded-lg bg-green-50 p-3 text-sm text-green-700">{success}</div>
-      {/if}
-
-      {#if cart.count === 0}
-        <p class="text-center text-gray-400">Panier vide</p>
-      {:else}
-        <div class="space-y-2">
-          {#each cart.items as item, i}
-            <div class="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
-              <div class="flex-1">
-                <div class="text-sm font-medium">{item.name}</div>
-                <div class="text-xs text-gray-500">
-                  {item.vatRegime === 'deposit' ? 'Dépôt' : item.vatRegime === 'normal' ? 'TVA normale' : 'Marge'}
-                </div>
-              </div>
-              <div class="flex items-center gap-3">
-                <span class="font-semibold">{formatPrice(item.price)}</span>
-                <button onclick={() => cart.remove(i)} class="text-red-400 hover:text-red-600 text-lg leading-none">&times;</button>
-              </div>
-            </div>
-          {/each}
+        <div class="mt-4 flex items-start gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
+          <svg class="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>{success}</span>
         </div>
+      {/if}
+      {#if error}
+        <div class="mt-4 flex items-start gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+          <svg class="mt-0.5 h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <span>{error}</span>
+        </div>
+      {/if}
+    </div>
+
+    <!-- Cart items -->
+    <div class="flex-1 overflow-auto px-5 py-4">
+      {#if cart.count === 0}
+        <p class="py-8 text-center text-sm text-gray-400">Panier vide</p>
+      {:else}
+        <ul class="space-y-1">
+          {#each cart.items as item, i}
+            <li class="flex items-center justify-between py-2">
+              <div class="min-w-0 flex-1">
+                <div class="truncate text-sm font-medium text-gray-900">{item.name}</div>
+                <span class="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+                  {vatLabel(item.vatRegime)}
+                </span>
+              </div>
+              <div class="flex items-center gap-3 pl-3">
+                <span class="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</span>
+                <button
+                  onclick={() => cart.remove(i)}
+                  class="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                  aria-label="Retirer {item.name} du panier"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </li>
+          {/each}
+        </ul>
       {/if}
     </div>
 
     <!-- Payment footer -->
-    <div class="border-t bg-gray-50 p-4">
-      <div class="mb-4 flex items-center justify-between text-xl font-bold">
-        <span>Total TTC</span>
-        <span class="text-blue-700">{formatPrice(cart.total)}</span>
+    <div class="border-t px-5 py-4">
+      <!-- Total -->
+      <div class="mb-4 flex items-baseline justify-between">
+        <span class="text-sm font-medium text-gray-500">Total TTC</span>
+        <span class="text-2xl font-bold text-gray-900">{formatPrice(cart.total)}</span>
       </div>
 
-      <div class="mb-4">
-        <label class="mb-1 block text-sm font-medium text-gray-700">Mode de paiement</label>
-        <div class="flex gap-2">
-          {#each [{ v: 'cash', l: 'Espèces' }, { v: 'card', l: 'CB' }, { v: 'check', l: 'Chèque' }, { v: 'other', l: 'Autre' }] as opt}
-            <button onclick={() => paymentMethod = opt.v}
-              class="flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors
-                {paymentMethod === opt.v ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'}">
-              {opt.l}
-            </button>
-          {/each}
-        </div>
+      <!-- Divider -->
+      <hr class="mb-4 border-gray-100" />
+
+      <!-- Payment method -->
+      <div class="mb-4 grid grid-cols-2 gap-2">
+        {#each paymentOptions as opt}
+          <button
+            onclick={() => paymentMethod = opt.v}
+            class="rounded-lg border px-3 py-2 text-sm font-medium transition-colors
+              {paymentMethod === opt.v
+                ? 'border-blue-500 bg-blue-600 text-white'
+                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'}"
+          >
+            {opt.l}
+          </button>
+        {/each}
       </div>
 
-      <button onclick={handlePayment} disabled={cart.count === 0 || processing}
-        class="w-full rounded-lg bg-green-600 px-4 py-3 text-lg font-bold text-white hover:bg-green-700 disabled:opacity-50">
-        {processing ? 'Traitement...' : `Encaisser ${formatPrice(cart.total)}`}
+      <!-- Submit -->
+      <button
+        onclick={handlePayment}
+        disabled={cart.count === 0 || processing}
+        class="w-full rounded-xl bg-green-600 py-3 text-lg font-semibold text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        {processing ? 'Traitement...' : 'Encaisser'}
       </button>
     </div>
   </div>

@@ -100,7 +100,7 @@
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Supprimer cet article ? (il sera marqué comme détruit)')) return
+    if (!confirm('Supprimer cet article ? (il sera marque comme detruit)')) return
     try {
       await items.remove(id)
       await loadList()
@@ -110,7 +110,7 @@
   }
 
   async function handleReturn(id: string) {
-    if (!confirm('Restituer cet article au déposant ?')) return
+    if (!confirm('Restituer cet article au deposant ?')) return
     try {
       await items.returnItem(id)
       await loadList()
@@ -120,70 +120,88 @@
   }
 
   function formatPrice(cents: number) {
-    return (cents / 100).toFixed(2).replace('.', ',') + ' €'
+    return (cents / 100).toFixed(2).replace('.', ',') + ' \u20AC'
+  }
+
+  function statusLabel(status: string) {
+    if (status === 'available') return 'En vente'
+    if (status === 'sold') return 'Vendu'
+    if (status === 'returned') return 'Restitue'
+    if (status === 'destroyed') return 'Supprime'
+    return status
+  }
+
+  function statusClass(status: string) {
+    if (status === 'available') return 'bg-green-50 text-green-700'
+    if (status === 'sold') return 'bg-blue-50 text-blue-700'
+    if (status === 'returned') return 'bg-amber-50 text-amber-700'
+    return 'bg-gray-100 text-gray-600'
   }
 </script>
 
 <svelte:head>
-  <title>Articles — Rebond</title>
+  <title>Articles -- Rebond</title>
 </svelte:head>
 
-<div class="p-6">
+<div class="p-6 lg:p-8">
   <div class="mb-6 flex items-center justify-between">
     <div class="flex items-center gap-4">
-      <h1 class="text-2xl font-bold text-gray-900">Articles</h1>
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Articles</h1>
+        <p class="text-sm text-gray-500 mt-1">Inventaire et gestion des articles en depot</p>
+      </div>
       <select bind:value={statusFilter} onchange={() => loadList()}
-        class="rounded-lg border border-gray-300 px-3 py-1.5 text-sm">
+        class="rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
         <option value="available">En vente</option>
         <option value="sold">Vendus</option>
-        <option value="returned">Restitués</option>
-        <option value="destroyed">Supprimés</option>
+        <option value="returned">Restitues</option>
+        <option value="destroyed">Supprimes</option>
       </select>
     </div>
     <button onclick={() => { if (showForm) { showForm = false; resetForm() } else { showForm = true } }}
-      class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+      class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors">
       {showForm ? 'Annuler' : '+ Nouvel article'}
     </button>
   </div>
 
   {#if error}
-    <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+    <div class="mb-4 rounded-lg bg-red-50 border border-red-100 p-4 text-sm text-red-700">{error}</div>
   {/if}
 
   {#if showForm}
     <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}
-      class="mb-6 rounded-xl bg-white p-6 shadow-sm">
-      <h2 class="mb-4 text-lg font-semibold">{editingId ? 'Modifier l\'article' : 'Nouvel article'}</h2>
-      <div class="grid grid-cols-2 gap-4">
-        <div class="col-span-2">
-          <label class="block text-sm font-medium text-gray-700">Nom *</label>
-          <input type="text" bind:value={name} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+      class="mb-6 rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">{editingId ? 'Modifier l\'article' : 'Nouvel article'}</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Nom *</label>
+          <input type="text" bind:value={name} required class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700">Catégorie</label>
-          <input type="text" bind:value={category} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Vêtements, Meubles..." />
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Categorie</label>
+          <input type="text" bind:value={category} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" placeholder="Vetements, Meubles..." />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700">Marque</label>
-          <input type="text" bind:value={brand} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Marque</label>
+          <input type="text" bind:value={brand} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700">Taille</label>
-          <input type="text" bind:value={size} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="M, 42..." />
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Taille</label>
+          <input type="text" bind:value={size} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" placeholder="M, 42..." />
         </div>
         {#if editingId}
           <div>
-            <label class="block text-sm font-medium text-gray-700">Prix actuel (€)</label>
-            <input type="number" step="0.01" min="0" bind:value={currentPrice} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Prix actuel (EUR)</label>
+            <input type="number" step="0.01" min="0" bind:value={currentPrice} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
           </div>
         {:else}
           <div>
-            <label class="block text-sm font-medium text-gray-700">Prix (€) *</label>
-            <input type="number" step="0.01" min="0" bind:value={initialPrice} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Prix (EUR) *</label>
+            <input type="number" step="0.01" min="0" bind:value={initialPrice} required class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">Déposant</label>
-            <select bind:value={depositorId} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Deposant</label>
+            <select bind:value={depositorId} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
               <option value="">Stock propre</option>
               {#each depList as dep}
                 <option value={dep.id}>{dep.first_name ?? dep.firstName} {dep.last_name ?? dep.lastName}</option>
@@ -191,64 +209,65 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700">Régime TVA</label>
-            <select bind:value={vatRegime} class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-              <option value="deposit">TVA sur marge (dépôt)</option>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Regime TVA</label>
+            <select bind:value={vatRegime} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+              <option value="deposit">TVA sur marge (depot)</option>
               <option value="resale_item_by_item">TVA marge (achat/revente)</option>
               <option value="normal">TVA normale</option>
             </select>
           </div>
         {/if}
       </div>
-      <button type="submit" class="mt-4 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700">
-        {editingId ? 'Enregistrer' : 'Ajouter l\'article'}
-      </button>
+      <div class="mt-6 flex justify-end">
+        <button type="submit" class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors">
+          {editingId ? 'Enregistrer' : 'Ajouter l\'article'}
+        </button>
+      </div>
     </form>
   {/if}
 
   {#if loading}
-    <p class="text-gray-500">Chargement...</p>
+    <p class="text-center py-12 text-gray-400">Chargement...</p>
   {:else if list.length === 0}
-    <p class="text-gray-500">Aucun article.</p>
+    <p class="text-center py-12 text-gray-500">Aucun article.</p>
   {:else}
-    <div class="overflow-hidden rounded-xl bg-white shadow-sm">
+    <div class="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100">
       <table class="w-full text-left text-sm">
-        <thead class="border-b bg-gray-50 text-xs uppercase text-gray-500">
-          <tr>
-            <th class="px-4 py-3">Code</th>
-            <th class="px-4 py-3">Article</th>
-            <th class="px-4 py-3">Catégorie</th>
-            <th class="px-4 py-3">Prix</th>
-            <th class="px-4 py-3">Statut</th>
+        <thead class="border-b bg-gray-50/80">
+          <tr class="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <th class="px-5 py-3.5">Code</th>
+            <th class="px-5 py-3.5">Article</th>
+            <th class="px-5 py-3.5">Categorie</th>
+            <th class="px-5 py-3.5">Prix</th>
+            <th class="px-5 py-3.5">Statut</th>
             {#if statusFilter === 'available'}
-              <th class="px-4 py-3">Actions</th>
+              <th class="px-5 py-3.5">Actions</th>
             {/if}
           </tr>
         </thead>
-        <tbody class="divide-y">
+        <tbody class="divide-y divide-gray-100">
           {#each list as item}
-            <tr class="hover:bg-gray-50">
-              <td class="px-4 py-3 font-mono text-xs">{item.sku ?? '-'}</td>
-              <td class="px-4 py-3 font-medium">{item.name}</td>
-              <td class="px-4 py-3 text-gray-600">{item.category ?? '-'}</td>
-              <td class="px-4 py-3">{formatPrice(item.current_price ?? item.currentPrice)}</td>
-              <td class="px-4 py-3">
-                <span class="rounded-full px-2 py-0.5 text-xs font-medium
-                  {item.status === 'available' ? 'bg-green-100 text-green-700' : item.status === 'sold' ? 'bg-blue-100 text-blue-700' : item.status === 'returned' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-700'}">
-                  {item.status === 'available' ? 'En vente' : item.status === 'sold' ? 'Vendu' : item.status === 'returned' ? 'Restitué' : item.status === 'destroyed' ? 'Supprimé' : item.status}
+            <tr class="hover:bg-gray-50/50 transition-colors">
+              <td class="px-5 py-4 font-mono text-xs text-gray-500">{item.sku ?? '-'}</td>
+              <td class="px-5 py-4 font-medium text-gray-900">{item.name}</td>
+              <td class="px-5 py-4 text-gray-600">{item.category ?? '-'}</td>
+              <td class="px-5 py-4 font-medium">{formatPrice(item.current_price ?? item.currentPrice)}</td>
+              <td class="px-5 py-4">
+                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {statusClass(item.status)}">
+                  {statusLabel(item.status)}
                 </span>
               </td>
               {#if statusFilter === 'available'}
-                <td class="px-4 py-3">
-                  <div class="flex gap-2">
+                <td class="px-5 py-4">
+                  <div class="flex gap-3">
                     <button onclick={() => startEdit(item)}
-                      class="text-sm text-blue-600 hover:text-blue-800">Modifier</button>
+                      class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">Modifier</button>
                     {#if item.depositor_id ?? item.depositorId}
                       <button onclick={() => handleReturn(item.id)}
-                        class="text-sm text-orange-600 hover:text-orange-800">Restituer</button>
+                        class="text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors">Restituer</button>
                     {/if}
                     <button onclick={() => handleDelete(item.id)}
-                      class="text-sm text-red-600 hover:text-red-800">Supprimer</button>
+                      class="text-sm font-medium text-red-600 hover:text-red-700 transition-colors">Supprimer</button>
                   </div>
                 </td>
               {/if}

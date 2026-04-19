@@ -58,96 +58,101 @@
 
   function statusLabel(status: string) {
     if (status === 'active') return 'Actif'
-    if (status === 'expired') return 'Expiré'
-    if (status === 'cancelled') return 'Annulé'
+    if (status === 'expired') return 'Expire'
+    if (status === 'cancelled') return 'Annule'
     return status
   }
 
   function statusClass(status: string) {
-    if (status === 'active') return 'bg-green-100 text-green-700'
-    if (status === 'expired') return 'bg-orange-100 text-orange-700'
-    return 'bg-gray-100 text-gray-700'
+    if (status === 'active') return 'bg-green-50 text-green-700'
+    if (status === 'expired') return 'bg-amber-50 text-amber-700'
+    return 'bg-gray-100 text-gray-600'
   }
 </script>
 
 <svelte:head>
-  <title>Contrats — Rebond</title>
+  <title>Contrats -- Rebond</title>
 </svelte:head>
 
-<div class="p-6">
+<div class="p-6 lg:p-8">
   <div class="mb-6 flex items-center justify-between">
-    <h1 class="text-2xl font-bold text-gray-900">Contrats de dépôt</h1>
+    <div>
+      <h1 class="text-2xl font-bold text-gray-900">Contrats de depot</h1>
+      <p class="text-sm text-gray-500 mt-1">Suivi des contrats entre la boutique et les deposants</p>
+    </div>
     <button onclick={() => showForm = !showForm}
-      class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+      class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors">
       {showForm ? 'Annuler' : '+ Nouveau contrat'}
     </button>
   </div>
 
   {#if error}
-    <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
+    <div class="mb-4 rounded-lg bg-red-50 border border-red-100 p-4 text-sm text-red-700">{error}</div>
   {/if}
 
   {#if showForm}
     <form onsubmit={(e) => { e.preventDefault(); handleCreate() }}
-      class="mb-6 rounded-xl bg-white p-6 shadow-sm">
-      <h2 class="mb-4 text-lg font-semibold">Nouveau contrat</h2>
-      <div class="grid grid-cols-2 gap-4">
-        <div class="col-span-2">
-          <label class="block text-sm font-medium text-gray-700">Déposant *</label>
-          <select bind:value={depositorId} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
-            <option value="">Sélectionner...</option>
+      class="mb-6 rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Nouveau contrat</h2>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Deposant *</label>
+          <select bind:value={depositorId} required class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+            <option value="">Selectionner...</option>
             {#each depList as dep}
               <option value={dep.id}>{dep.first_name ?? dep.firstName} {dep.last_name ?? dep.lastName}</option>
             {/each}
           </select>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700">Commission (%)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Commission (%)</label>
           <input type="number" min="0" max="100" step="1" value={commissionRate / 100}
             onchange={(e) => commissionRate = Number(e.currentTarget.value) * 100}
-            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700">Durée (jours)</label>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Duree (jours)</label>
           <input type="number" min="1" bind:value={expiresInDays}
-            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+            class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
         </div>
       </div>
-      <button type="submit" class="mt-4 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700">
-        Créer le contrat
-      </button>
+      <div class="mt-6 flex justify-end">
+        <button type="submit" class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors">
+          Creer le contrat
+        </button>
+      </div>
     </form>
   {/if}
 
   {#if loading}
-    <p class="text-gray-500">Chargement...</p>
+    <p class="text-center py-12 text-gray-400">Chargement...</p>
   {:else if list.length === 0}
-    <p class="text-gray-500">Aucun contrat enregistré.</p>
+    <p class="text-center py-12 text-gray-500">Aucun contrat enregistre.</p>
   {:else}
-    <div class="overflow-hidden rounded-xl bg-white shadow-sm">
+    <div class="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100">
       <table class="w-full text-left text-sm">
-        <thead class="border-b bg-gray-50 text-xs uppercase text-gray-500">
-          <tr>
-            <th class="px-4 py-3">N° contrat</th>
-            <th class="px-4 py-3">Déposant</th>
-            <th class="px-4 py-3">Commission</th>
-            <th class="px-4 py-3">Signé le</th>
-            <th class="px-4 py-3">Expire le</th>
-            <th class="px-4 py-3">Statut</th>
+        <thead class="border-b bg-gray-50/80">
+          <tr class="text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <th class="px-5 py-3.5">N. contrat</th>
+            <th class="px-5 py-3.5">Deposant</th>
+            <th class="px-5 py-3.5">Commission</th>
+            <th class="px-5 py-3.5">Signe le</th>
+            <th class="px-5 py-3.5">Expire le</th>
+            <th class="px-5 py-3.5">Statut</th>
           </tr>
         </thead>
-        <tbody class="divide-y">
+        <tbody class="divide-y divide-gray-100">
           {#each list as c}
-            <tr class="hover:bg-gray-50">
-              <td class="px-4 py-3 font-mono text-xs">{c.number}</td>
-              <td class="px-4 py-3 font-medium">
+            <tr class="hover:bg-gray-50/50 transition-colors">
+              <td class="px-5 py-4 font-mono text-xs text-gray-500">{c.number}</td>
+              <td class="px-5 py-4 font-medium text-gray-900">
                 {c.depositorFirstName ?? c.depositor_first_name ?? ''} {c.depositorLastName ?? c.depositor_last_name ?? ''}
               </td>
-              <td class="px-4 py-3">{(c.commission_rate ?? c.commissionRate ?? 0) / 100}%</td>
-              <td class="px-4 py-3 text-gray-600">{formatDate(c.signed_at ?? c.signedAt)}</td>
-              <td class="px-4 py-3 text-gray-600">{formatDate(c.expires_at ?? c.expiresAt)}</td>
-              <td class="px-4 py-3">
-                <span class="rounded-full px-2 py-0.5 text-xs font-medium {statusClass(c.status)}">
+              <td class="px-5 py-4">{(c.commission_rate ?? c.commissionRate ?? 0) / 100}%</td>
+              <td class="px-5 py-4 text-gray-600">{formatDate(c.signed_at ?? c.signedAt)}</td>
+              <td class="px-5 py-4 text-gray-600">{formatDate(c.expires_at ?? c.expiresAt)}</td>
+              <td class="px-5 py-4">
+                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium {statusClass(c.status)}">
                   {statusLabel(c.status)}
                 </span>
               </td>

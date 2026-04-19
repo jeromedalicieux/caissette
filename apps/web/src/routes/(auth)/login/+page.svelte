@@ -28,7 +28,7 @@
   }
 
   async function handleRegister() {
-    if (!shopId) { error = 'Créez d\'abord une boutique'; return }
+    if (!shopId) { error = 'Creez d\'abord une boutique'; return }
     error = ''
     submitting = true
     try {
@@ -54,77 +54,276 @@
     }
     submitting = false
   }
+
+  const tabs = [
+    { id: 'login' as const, label: 'Connexion' },
+    { id: 'register' as const, label: 'Inscription' },
+    { id: 'onboarding' as const, label: 'Nouvelle boutique' },
+  ]
+
+  const features = [
+    { title: 'Gestion des depots', desc: 'Suivi complet des articles en depot-vente' },
+    { title: 'Caisse rapide', desc: 'Interface de vente optimisee pour le quotidien' },
+    { title: 'Suivi deposants', desc: 'Comptes deposants et reversements automatises' },
+    { title: 'Tableaux de bord', desc: 'Statistiques et rapports en temps reel' },
+  ]
 </script>
 
 <svelte:head>
   <title>Connexion — Rebond</title>
 </svelte:head>
 
-<main class="flex min-h-screen items-center justify-center bg-gray-50">
-  <div class="w-full max-w-md rounded-xl bg-white p-8 shadow-lg">
-    <h1 class="mb-2 text-2xl font-bold text-gray-900">Rebond</h1>
-    <p class="mb-6 text-sm text-gray-500">Caisse dépôt-vente</p>
-
-    {#if error}
-      <div class="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</div>
-    {/if}
-
-    <!-- Tabs -->
-    <div class="mb-6 flex gap-1 rounded-lg bg-gray-100 p-1">
-      <button class="flex-1 rounded-md px-3 py-1.5 text-sm font-medium {mode === 'login' ? 'bg-white shadow' : ''}" onclick={() => mode = 'login'}>Connexion</button>
-      <button class="flex-1 rounded-md px-3 py-1.5 text-sm font-medium {mode === 'onboarding' ? 'bg-white shadow' : ''}" onclick={() => mode = 'onboarding'}>Nouvelle boutique</button>
+<main class="flex min-h-screen">
+  <!-- Brand panel — hidden on mobile -->
+  <div class="hidden lg:flex lg:w-1/2 xl:w-[55%] bg-gradient-to-br from-blue-600 to-blue-800 text-white flex-col justify-between p-12">
+    <div>
+      <h1 class="text-4xl font-bold tracking-tight">Rebond</h1>
+      <p class="mt-2 text-lg text-blue-100">Caisse depot-vente</p>
     </div>
 
-    {#if mode === 'login'}
-      <form onsubmit={(e) => { e.preventDefault(); handleLogin() }} class="space-y-4">
-        <div>
-          <label for="shopId" class="block text-sm font-medium text-gray-700">ID Boutique</label>
-          <input type="text" id="shopId" bind:value={shopId} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+    <div class="space-y-6">
+      {#each features as feature}
+        <div class="flex items-start gap-4">
+          <div class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
+            <svg class="h-4 w-4 text-blue-100" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+          <div>
+            <p class="font-semibold text-white">{feature.title}</p>
+            <p class="text-sm text-blue-200">{feature.desc}</p>
+          </div>
         </div>
-        <div>
-          <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-          <input type="email" id="email" bind:value={email} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label for="password" class="block text-sm font-medium text-gray-700">Mot de passe</label>
-          <input type="password" id="password" bind:value={password} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        </div>
-        <button type="submit" disabled={submitting} class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-          {submitting ? 'Connexion...' : 'Se connecter'}
-        </button>
-      </form>
+      {/each}
+    </div>
 
-    {:else}
-      <form onsubmit={(e) => { e.preventDefault(); handleOnboarding() }} class="space-y-4">
-        <div>
-          <label for="shopName" class="block text-sm font-medium text-gray-700">Nom de la boutique</label>
-          <input type="text" id="shopName" bind:value={shopName} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Ma Boutique" />
+    <p class="text-sm text-blue-300">Rebond — Logiciel de caisse pour depot-vente</p>
+  </div>
+
+  <!-- Form panel -->
+  <div class="flex w-full flex-col items-center justify-center bg-white px-6 py-12 lg:w-1/2 xl:w-[45%]">
+    <!-- Mobile-only brand header -->
+    <div class="mb-8 text-center lg:hidden">
+      <h1 class="text-3xl font-bold text-gray-900">Rebond</h1>
+      <p class="mt-1 text-sm text-gray-500">Caisse depot-vente</p>
+    </div>
+
+    <div class="w-full max-w-sm">
+      <!-- Error banner -->
+      {#if error}
+        <div class="mb-6 flex items-center gap-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 transition-all duration-200">
+          <svg class="h-5 w-5 shrink-0 text-red-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
+          <span>{error}</span>
         </div>
-        <div>
-          <label for="siret" class="block text-sm font-medium text-gray-700">SIRET</label>
-          <input type="text" id="siret" bind:value={siret} required pattern="\\d{14}" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="12345678901234" />
-        </div>
-        <div>
-          <label for="address" class="block text-sm font-medium text-gray-700">Adresse</label>
-          <input type="text" id="address" bind:value={address} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        </div>
-        <hr class="my-2" />
-        <div>
-          <label for="name2" class="block text-sm font-medium text-gray-700">Votre nom</label>
-          <input type="text" id="name2" bind:value={name} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label for="email2" class="block text-sm font-medium text-gray-700">Email</label>
-          <input type="email" id="email2" bind:value={email} required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        </div>
-        <div>
-          <label for="password2" class="block text-sm font-medium text-gray-700">Mot de passe</label>
-          <input type="password" id="password2" bind:value={password} required minlength="8" class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
-        </div>
-        <button type="submit" disabled={submitting} class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-          {submitting ? 'Création...' : 'Créer ma boutique'}
-        </button>
-      </form>
-    {/if}
+      {/if}
+
+      <!-- Tab switcher -->
+      <div class="mb-8 flex rounded-lg bg-gray-100 p-1">
+        {#each tabs as tab}
+          <button
+            type="button"
+            class="flex-1 rounded-md px-3 py-2 text-sm font-medium transition-all duration-200 {mode === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}"
+            onclick={() => { mode = tab.id; error = '' }}
+          >
+            {tab.label}
+          </button>
+        {/each}
+      </div>
+
+      <!-- Login form -->
+      {#if mode === 'login'}
+        <form onsubmit={(e) => { e.preventDefault(); handleLogin() }} class="space-y-5">
+          <div>
+            <label for="shopId" class="block text-sm font-medium text-gray-700 mb-1.5">ID Boutique</label>
+            <input
+              type="text"
+              id="shopId"
+              bind:value={shopId}
+              required
+              class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+              placeholder="ex: shop_abc123"
+            />
+          </div>
+          <div>
+            <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+            <input
+              type="email"
+              id="login-email"
+              bind:value={email}
+              required
+              class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+              placeholder="vous@exemple.fr"
+            />
+          </div>
+          <div>
+            <label for="login-password" class="block text-sm font-medium text-gray-700 mb-1.5">Mot de passe</label>
+            <input
+              type="password"
+              id="login-password"
+              bind:value={password}
+              required
+              class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+              placeholder="Votre mot de passe"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+          >
+            {submitting ? 'Connexion en cours...' : 'Se connecter'}
+          </button>
+        </form>
+
+      <!-- Register form -->
+      {:else if mode === 'register'}
+        <form onsubmit={(e) => { e.preventDefault(); handleRegister() }} class="space-y-5">
+          <div>
+            <label for="reg-shopId" class="block text-sm font-medium text-gray-700 mb-1.5">ID Boutique</label>
+            <input
+              type="text"
+              id="reg-shopId"
+              bind:value={shopId}
+              required
+              class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+              placeholder="ID fourni par le gerant"
+            />
+          </div>
+          <div>
+            <label for="reg-name" class="block text-sm font-medium text-gray-700 mb-1.5">Votre nom</label>
+            <input
+              type="text"
+              id="reg-name"
+              bind:value={name}
+              required
+              class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+              placeholder="Jean Dupont"
+            />
+          </div>
+          <div>
+            <label for="reg-email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+            <input
+              type="email"
+              id="reg-email"
+              bind:value={email}
+              required
+              class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+              placeholder="vous@exemple.fr"
+            />
+          </div>
+          <div>
+            <label for="reg-password" class="block text-sm font-medium text-gray-700 mb-1.5">Mot de passe</label>
+            <input
+              type="password"
+              id="reg-password"
+              bind:value={password}
+              required
+              minlength="8"
+              class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+              placeholder="8 caracteres minimum"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={submitting}
+            class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+          >
+            {submitting ? 'Inscription...' : 'S\'inscrire'}
+          </button>
+        </form>
+
+      <!-- Onboarding form -->
+      {:else}
+        <form onsubmit={(e) => { e.preventDefault(); handleOnboarding() }} class="space-y-5">
+          <fieldset class="space-y-4">
+            <legend class="text-sm font-semibold text-gray-900 mb-1">Informations boutique</legend>
+            <div>
+              <label for="ob-shopName" class="block text-sm font-medium text-gray-700 mb-1.5">Nom de la boutique</label>
+              <input
+                type="text"
+                id="ob-shopName"
+                bind:value={shopName}
+                required
+                class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+                placeholder="Ma Boutique"
+              />
+            </div>
+            <div>
+              <label for="ob-siret" class="block text-sm font-medium text-gray-700 mb-1.5">SIRET</label>
+              <input
+                type="text"
+                id="ob-siret"
+                bind:value={siret}
+                required
+                pattern={"\\d{14}"}
+                class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+                placeholder="12345678901234"
+              />
+            </div>
+            <div>
+              <label for="ob-address" class="block text-sm font-medium text-gray-700 mb-1.5">Adresse</label>
+              <input
+                type="text"
+                id="ob-address"
+                bind:value={address}
+                required
+                class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+                placeholder="12 rue du Commerce, 33000 Bordeaux"
+              />
+            </div>
+          </fieldset>
+
+          <div class="border-t border-gray-200"></div>
+
+          <fieldset class="space-y-4">
+            <legend class="text-sm font-semibold text-gray-900 mb-1">Votre compte administrateur</legend>
+            <div>
+              <label for="ob-name" class="block text-sm font-medium text-gray-700 mb-1.5">Votre nom</label>
+              <input
+                type="text"
+                id="ob-name"
+                bind:value={name}
+                required
+                class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+                placeholder="Jean Dupont"
+              />
+            </div>
+            <div>
+              <label for="ob-email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <input
+                type="email"
+                id="ob-email"
+                bind:value={email}
+                required
+                class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+                placeholder="vous@exemple.fr"
+              />
+            </div>
+            <div>
+              <label for="ob-password" class="block text-sm font-medium text-gray-700 mb-1.5">Mot de passe</label>
+              <input
+                type="password"
+                id="ob-password"
+                bind:value={password}
+                required
+                minlength="8"
+                class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-shadow duration-150"
+                placeholder="8 caracteres minimum"
+              />
+            </div>
+          </fieldset>
+
+          <button
+            type="submit"
+            disabled={submitting}
+            class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150"
+          >
+            {submitting ? 'Creation en cours...' : 'Creer ma boutique'}
+          </button>
+        </form>
+      {/if}
+    </div>
   </div>
 </main>
