@@ -5,7 +5,6 @@
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import WelcomeModal from '$lib/components/WelcomeModal.svelte'
-  import GuidedTour from '$lib/components/GuidedTour.svelte'
   import { onboarding } from '$lib/stores/onboarding.svelte'
 
   let { children } = $props()
@@ -179,11 +178,9 @@
     </nav>
 
     <!-- Main content -->
-    <main class="flex-1 overflow-y-auto bg-gray-50">
+    <main class="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-slate-100/50">
+      <WelcomeModal />
       {@render children()}
     </main>
   </div>
-
-  <WelcomeModal />
-  <GuidedTour />
 {/if}

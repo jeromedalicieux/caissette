@@ -7,6 +7,7 @@
   import { queueOfflineSale } from '$lib/offline/sync'
   import { printer, printReceipt } from '$lib/printer/escpos'
   import { onMount } from 'svelte'
+  import SectionGuide from '$lib/components/SectionGuide.svelte'
 
   let availableItems = $state<any[]>([])
   let search = $state('')
@@ -182,6 +183,13 @@
   <div class="flex min-h-0 flex-1 flex-col bg-gray-50">
     <!-- Search bar -->
     <div class="p-4 pb-2">
+      <div class="flex items-center gap-2 mb-2">
+        <SectionGuide
+          title="Ecran de caisse"
+          description="Cliquez sur un article a gauche pour l'ajouter au panier. Choisissez le moyen de paiement, puis appuyez sur Encaisser."
+          tips={['Recherchez par nom, code ou categorie', 'Vous pouvez ajouter plusieurs articles au panier', 'Le ticket est imprimable apres chaque vente', 'En cas de coupure internet, la vente est sauvegardee hors-ligne']}
+        />
+      </div>
       <div class="relative">
         <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
           <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">

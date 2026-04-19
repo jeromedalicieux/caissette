@@ -3,7 +3,7 @@
   import { shopStore } from '$lib/stores/shop.svelte'
   import { authStore } from '$lib/stores/auth.svelte'
   import { onMount } from 'svelte'
-  import HelpTip from '$lib/components/HelpTip.svelte'
+  import SectionGuide from '$lib/components/SectionGuide.svelte'
 
   let loading = $state(true)
   let saving = $state(false)
@@ -104,7 +104,14 @@
 
 <div class="p-6 lg:p-8">
   <div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">Parametres de la boutique</h1>
+    <div class="flex items-center gap-2">
+      <h1 class="text-2xl font-bold text-gray-900">Parametres de la boutique</h1>
+      <SectionGuide
+        title="Parametres"
+        description="Configurez les informations de votre boutique, activez des modules optionnels, et accedez aux outils de conformite."
+        tips={['Le SIRET et l\'adresse apparaissent sur vos tickets de caisse', 'Le module depot-vente ajoute la gestion des deposants et commissions', 'L\'export FEC est obligatoire en cas de controle fiscal', 'L\'attestation de conformite est demandable par l\'administration']}
+      />
+    </div>
     <p class="text-sm text-gray-500 mt-1">Configuration generale de votre espace de vente</p>
   </div>
 
@@ -168,7 +175,11 @@
     <div class="mt-8 max-w-2xl rounded-xl bg-white p-6 shadow-sm border border-gray-100">
       <div class="flex items-center gap-2 mb-1">
         <h2 class="text-lg font-semibold text-gray-900">Modules</h2>
-        <HelpTip text="Activez le depot-vente pour gerer des deposants, contrats, commissions et reversements. Ce module ajoute des pages supplementaires dans le menu." />
+        <SectionGuide
+          title="Modules optionnels"
+          description="Activez ou desactivez des fonctionnalites supplementaires. Le depot-vente ajoute la gestion des deposants, contrats, commissions et reversements."
+          tips={['Le depot-vente ajoute 4 pages dans le menu : Deposants, Contrats, Livre de police, Reversements', 'Desactiver un module masque les pages mais ne supprime pas les donnees']}
+        />
       </div>
       <p class="text-sm text-gray-500 mb-5">Activez ou desactivez les fonctionnalites optionnelles</p>
 

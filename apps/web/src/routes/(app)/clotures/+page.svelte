@@ -2,6 +2,7 @@
   import { closuresApi } from '$lib/api/client'
   import { authStore } from '$lib/stores/auth.svelte'
   import { onMount } from 'svelte'
+  import SectionGuide from '$lib/components/SectionGuide.svelte'
 
   let list = $state<any[]>([])
   let loading = $state(true)
@@ -75,7 +76,14 @@
 <div class="p-6 lg:p-8">
   <div class="mb-6 flex items-center justify-between">
     <div>
-      <h1 class="text-2xl font-bold text-gray-900">Clotures de caisse</h1>
+      <div class="flex items-center gap-2">
+        <h1 class="text-2xl font-bold text-gray-900">Clotures de caisse</h1>
+        <SectionGuide
+          title="Clotures de caisse"
+          description="Les clotures (tickets Z) sont obligatoires. Elles agregent les ventes d'une journee ou d'un mois et sont signees numeriquement."
+          tips={['Generez un Z journalier a la fin de chaque journee', 'La cloture mensuelle est necessaire pour la comptabilite', 'Chaque cloture est chainee et infalsifiable', 'Seuls les responsables (owner/manager) peuvent generer des clotures']}
+        />
+      </div>
       <p class="text-sm text-gray-500 mt-1">Tickets Z journaliers et clotures mensuelles</p>
     </div>
     {#if isManager}

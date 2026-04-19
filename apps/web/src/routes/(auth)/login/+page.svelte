@@ -20,7 +20,7 @@
     submitting = true
     try {
       await authStore.login(email, password, shopId)
-      goto('/caisse')
+      goto('/dashboard')
     } catch (e: any) {
       error = e.message
     }
@@ -33,7 +33,7 @@
     submitting = true
     try {
       await authStore.register(name, email, password, shopId)
-      goto('/caisse')
+      goto('/dashboard')
     } catch (e: any) {
       error = e.message
     }
@@ -48,7 +48,7 @@
       shopId = shop.id
       localStorage.setItem('rebond_shop_id', shop.id)
       await authStore.register(name, email, password, shop.id)
-      goto('/caisse')
+      goto('/dashboard')
     } catch (e: any) {
       error = e.message
     }
@@ -62,10 +62,10 @@
   ]
 
   const features = [
-    { title: 'Gestion des depots', desc: 'Suivi complet des articles en depot-vente' },
-    { title: 'Caisse rapide', desc: 'Interface de vente optimisee pour le quotidien' },
-    { title: 'Suivi deposants', desc: 'Comptes deposants et reversements automatises' },
-    { title: 'Tableaux de bord', desc: 'Statistiques et rapports en temps reel' },
+    { title: 'Encaissement rapide', desc: 'Interface de caisse intuitive, multi-paiements, ticket instantane', icon: 'cash' },
+    { title: 'Conforme NF525', desc: 'Clotures Z, export FEC, attestation — conformite legale integree', icon: 'shield' },
+    { title: 'Tableau de bord', desc: 'CA en temps reel, top articles, repartition des paiements', icon: 'chart' },
+    { title: 'Mode depot-vente', desc: 'Module optionnel : deposants, contrats, commissions, reversements', icon: 'users' },
   ]
 </script>
 
@@ -75,29 +75,40 @@
 
 <main class="flex min-h-screen">
   <!-- Brand panel — hidden on mobile -->
-  <div class="hidden lg:flex lg:w-1/2 xl:w-[55%] bg-gradient-to-br from-blue-600 to-blue-800 text-white flex-col justify-between p-12">
-    <div>
-      <h1 class="text-4xl font-bold tracking-tight">Rebond</h1>
-      <p class="mt-2 text-lg text-blue-100">Caisse depot-vente</p>
+  <div class="hidden lg:flex lg:w-1/2 xl:w-[55%] bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white flex-col justify-between p-12 relative overflow-hidden">
+    <!-- Decorative circles -->
+    <div class="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-white/5"></div>
+    <div class="absolute -bottom-32 -left-32 h-80 w-80 rounded-full bg-white/5"></div>
+
+    <div class="relative">
+      <div class="flex items-center gap-3">
+        <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
+          <span class="text-xl font-bold">R</span>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold tracking-tight">Rebond</h1>
+          <p class="text-sm text-blue-200">Logiciel de caisse simple et conforme</p>
+        </div>
+      </div>
     </div>
 
-    <div class="space-y-6">
+    <div class="relative space-y-5">
       {#each features as feature}
-        <div class="flex items-start gap-4">
-          <div class="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/10">
-            <svg class="h-4 w-4 text-blue-100" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+        <div class="flex items-start gap-4 rounded-xl bg-white/5 backdrop-blur-sm p-4 transition-all hover:bg-white/10">
+          <div class="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/10">
+            <svg class="h-5 w-5 text-blue-100" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
           </div>
           <div>
             <p class="font-semibold text-white">{feature.title}</p>
-            <p class="text-sm text-blue-200">{feature.desc}</p>
+            <p class="text-sm text-blue-200/80">{feature.desc}</p>
           </div>
         </div>
       {/each}
     </div>
 
-    <p class="text-sm text-blue-300">Rebond — Logiciel de caisse pour depot-vente</p>
+    <p class="relative text-xs text-blue-300/60">Rebond — Caisse certifiee NF525</p>
   </div>
 
   <!-- Form panel -->
@@ -105,7 +116,7 @@
     <!-- Mobile-only brand header -->
     <div class="mb-8 text-center lg:hidden">
       <h1 class="text-3xl font-bold text-gray-900">Rebond</h1>
-      <p class="mt-1 text-sm text-gray-500">Caisse depot-vente</p>
+      <p class="mt-1 text-sm text-gray-500">Logiciel de caisse simple et conforme</p>
     </div>
 
     <div class="w-full max-w-sm">

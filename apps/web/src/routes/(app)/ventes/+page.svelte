@@ -3,6 +3,7 @@
   import { authStore } from '$lib/stores/auth.svelte'
   import { printer, printReceipt } from '$lib/printer/escpos'
   import { onMount } from 'svelte'
+  import SectionGuide from '$lib/components/SectionGuide.svelte'
 
   let list = $state<any[]>([])
   let loading = $state(true)
@@ -116,7 +117,14 @@
 
 <div class="p-6 lg:p-8">
   <div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">Historique des ventes</h1>
+    <div class="flex items-center gap-2">
+      <h1 class="text-2xl font-bold text-gray-900">Historique des ventes</h1>
+      <SectionGuide
+        title="Historique des ventes"
+        description="Retrouvez toutes vos transactions. Chaque vente est enregistree de maniere infalsifiable avec un hash cryptographique."
+        tips={['Filtrez par date, moyen de paiement ou statut', 'Cliquez sur Ticket pour voir le detail et l\'imprimer', 'Les responsables peuvent effectuer des avoirs (remboursements)', 'Les ventes ne peuvent pas etre modifiees ni supprimees (obligation legale)']}
+      />
+    </div>
     <p class="text-sm text-gray-500 mt-1">Toutes les transactions realisees depuis la caisse</p>
   </div>
 

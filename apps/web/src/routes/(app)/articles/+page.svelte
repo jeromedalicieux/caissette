@@ -2,6 +2,7 @@
   import { items, depositors } from '$lib/api/client'
   import { shopStore } from '$lib/stores/shop.svelte'
   import { onMount } from 'svelte'
+  import SectionGuide from '$lib/components/SectionGuide.svelte'
 
   let list = $state<any[]>([])
   let depList = $state<any[]>([])
@@ -150,7 +151,14 @@
   <div class="mb-6 flex items-center justify-between">
     <div class="flex items-center gap-4">
       <div>
-        <h1 class="text-2xl font-bold text-gray-900">Articles</h1>
+        <div class="flex items-center gap-2">
+          <h1 class="text-2xl font-bold text-gray-900">Articles</h1>
+          <SectionGuide
+            title="Gestion des articles"
+            description="Gerez votre inventaire complet. Ajoutez de nouveaux articles, modifiez les prix, et suivez leur statut."
+            tips={['Filtrez par statut : en vente, vendus, restitues, supprimes', 'Un code SKU unique est genere automatiquement', 'Les articles vendus changent de statut automatiquement', 'Si le depot-vente est actif, vous pouvez associer un deposant']}
+          />
+        </div>
         <p class="text-sm text-gray-500 mt-1">{shopStore.hasDepositSale ? 'Inventaire et gestion des articles en depot' : 'Inventaire et gestion des articles'}</p>
       </div>
       <select bind:value={statusFilter} onchange={() => loadList()}

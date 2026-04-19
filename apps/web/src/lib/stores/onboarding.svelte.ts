@@ -2,15 +2,11 @@ const STORAGE_KEY = 'rebond_onboarding'
 
 interface OnboardingState {
   welcomed: boolean
-  tourCompleted: boolean
-  tourStep: number
   dismissed: boolean
 }
 
 const DEFAULT_STATE: OnboardingState = {
   welcomed: false,
-  tourCompleted: false,
-  tourStep: 0,
   dismissed: false,
 }
 
@@ -36,36 +32,14 @@ function createOnboardingStore() {
 
   return {
     get showWelcome() { return !state.welcomed && !state.dismissed },
-    get showTour() { return state.welcomed && !state.tourCompleted && !state.dismissed },
-    get tourStep() { return state.tourStep },
-    get tourCompleted() { return state.tourCompleted },
-    get isActive() { return !state.tourCompleted && !state.dismissed },
 
     completeWelcome() {
       state.welcomed = true
       saveState(state)
     },
 
-    nextStep() {
-      state.tourStep++
-      saveState(state)
-    },
-
-    prevStep() {
-      if (state.tourStep > 0) {
-        state.tourStep--
-        saveState(state)
-      }
-    },
-
-    completeTour() {
-      state.tourCompleted = true
-      saveState(state)
-    },
-
     dismiss() {
       state.dismissed = true
-      state.tourCompleted = true
       saveState(state)
     },
 
