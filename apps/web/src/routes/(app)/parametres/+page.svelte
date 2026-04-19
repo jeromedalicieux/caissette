@@ -1,6 +1,7 @@
 <script lang="ts">
-  import { shops } from '$lib/api/client'
+  import { shops, exportApi, attestation } from '$lib/api/client'
   import { shopStore } from '$lib/stores/shop.svelte'
+  import { authStore } from '$lib/stores/auth.svelte'
   import { onMount } from 'svelte'
 
   let loading = $state(true)
@@ -15,6 +16,11 @@
   let email = $state('')
   let vatRegime = $state('margin')
   let togglingDeposit = $state(false)
+  let exportingFec = $state(false)
+  let fecStart = $state('')
+  let fecEnd = $state('')
+  let attestationData = $state<any>(null)
+  let showAttestation = $state(false)
 
   onMount(async () => {
     try {
@@ -56,6 +62,39 @@
     }
     togglingDeposit = false
   }
+
+  async function handleExportFec() {
+    if (!fecStart || !fecEnd) { error = 'Selectionnez une periode pour l\'export FEC'; return }
+    error = ''
+    exportingFec = true
+    try {
+      await exportApi.downloadFec(fecStart, fecEnd)
+      success = 'Export FEC telecharge.'
+    } catch (e: any) {
+      error = e.message
+    }
+    exportingFec = false
+  }
+
+  async function loadAttestation() {
+    try {
+      attestationData = await attestation.get()
+      showAttestation = true
+    } catch (e: any) {
+      error = e.message
+    }
+  }
+
+  // Default FEC period: current year
+  $effect(() => {
+    if (!fecStart) {
+      const now = new Date()
+      fecStart = `${now.getFullYear()}-01-01`
+      fecEnd = now.toISOString().split('T')[0]!
+    }
+  })
+
+  const isManager = $derived(authStore.user?.role === 'owner' || authStore.user?.role === 'manager')
 </script>
 
 <svelte:head>
@@ -149,5 +188,96 @@
         </button>
       </div>
     </div>
+
+    {#if isManager}
+      <!-- Export FEC -->
+      <div class="mt-8 max-w-2xl rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Export comptable (FEC)</h2>
+        <p class="text-sm text-gray-500 mb-5">Fichier des Ecritures Comptables — art. A47 A-1 du LPF</p>
+
+        <div class="flex items-end gap-4">
+          <div>
+            <label for="fec-start" class="block text-sm font-medium text-gray-700 mb-1.5">Debut</label>
+            <input type="date" id="fec-start" bind:value={fecStart}
+              class="rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+          </div>
+          <div>
+            <label for="fec-end" class="block text-sm font-medium text-gray-700 mb-1.5">Fin</label>
+            <input type="date" id="fec-end" bind:value={fecEnd}
+              class="rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+          </div>
+          <button onclick={handleExportFec} disabled={exportingFec}
+            class="rounded-lg bg-gray-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-gray-900 transition-colors disabled:opacity-50">
+            {exportingFec ? 'Export...' : 'Telecharger FEC'}
+          </button>
+        </div>
+      </div>
+
+      <!-- Attestation -->
+      <div class="mt-8 max-w-2xl rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+        <h2 class="text-lg font-semibold text-gray-900 mb-1">Attestation de conformite</h2>
+        <p class="text-sm text-gray-500 mb-5">Art. 286, I-3° bis du CGI — obligatoire en cas de controle fiscal</p>
+
+        <button onclick={loadAttestation}
+          class="rounded-lg bg-gray-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-gray-900 transition-colors">
+          Generer l'attestation
+        </button>
+      </div>
+    {/if}
   {/if}
 </div>
+
+<!-- Attestation modal -->
+{#if showAttestation && attestationData}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onclick={() => showAttestation = false}>
+    <div class="mx-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl" onclick={(e) => e.stopPropagation()}>
+      <div class="p-8">
+        <div class="text-center mb-8">
+          <h2 class="text-xl font-bold text-gray-900">{attestationData.title}</h2>
+          <p class="text-sm text-gray-500 mt-1">{attestationData.subtitle}</p>
+        </div>
+
+        <div class="mb-6 grid grid-cols-2 gap-6 text-sm">
+          <div>
+            <h3 class="font-semibold text-gray-900 mb-2">Editeur</h3>
+            <p class="text-gray-600">{attestationData.editor.name}</p>
+            <p class="text-gray-600">Logiciel : {attestationData.editor.software}</p>
+            <p class="text-gray-600">Version : {attestationData.editor.version}</p>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-900 mb-2">Client</h3>
+            <p class="text-gray-600">{attestationData.client.name}</p>
+            <p class="text-gray-600">SIRET : {attestationData.client.siret}</p>
+            <p class="text-gray-600">{attestationData.client.address}</p>
+          </div>
+        </div>
+
+        <div class="space-y-4 mb-6">
+          {#each attestationData.conditions as cond}
+            <div class="rounded-lg border border-gray-200 p-4">
+              <h4 class="font-semibold text-gray-900 text-sm">{cond.name}</h4>
+              <p class="text-sm text-gray-600 mt-1">{cond.description}</p>
+              <p class="text-xs text-gray-400 mt-2 italic">Methode : {cond.method}</p>
+            </div>
+          {/each}
+        </div>
+
+        <div class="text-center text-sm text-gray-500">
+          <p>Fait le {attestationData.date}</p>
+          <p class="mt-1 font-medium">{attestationData.editor.name}</p>
+        </div>
+      </div>
+
+      <div class="border-t px-6 py-3 flex justify-end gap-3">
+        <button onclick={() => window.print()}
+          class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors">
+          Imprimer
+        </button>
+        <button onclick={() => showAttestation = false}
+          class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors">
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}

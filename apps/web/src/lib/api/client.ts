@@ -215,6 +215,10 @@ export const sales = {
     return request<any[]>('/api/sales')
   },
 
+  get(id: string) {
+    return request<any>(`/api/sales/${id}`)
+  },
+
   create(data: {
     cashierId: string
     paymentMethod: string
@@ -235,5 +239,51 @@ export const sales = {
       method: 'POST',
       body: JSON.stringify(data),
     })
+  },
+}
+
+// ─── Closures ───
+
+export const closuresApi = {
+  list() {
+    return request<any[]>('/api/closures')
+  },
+
+  generate(type: 'daily' | 'monthly') {
+    return request<any>('/api/closures', {
+      method: 'POST',
+      body: JSON.stringify({ type }),
+    })
+  },
+}
+
+// ─── Export ───
+
+export const exportApi = {
+  async downloadFec(start: string, end: string) {
+    const token = getAuthToken()
+    const res = await fetch(`${API_BASE}/api/export/fec?start=${start}&end=${end}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }))
+      throw new ApiError(res.status, (body as any).error ?? 'Erreur serveur')
+    }
+    const blob = await res.blob()
+    const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'FEC.txt'
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+}
+
+// ─── Attestation ───
+
+export const attestation = {
+  get() {
+    return request<any>('/api/attestation')
   },
 }
