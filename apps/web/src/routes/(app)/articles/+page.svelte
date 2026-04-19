@@ -234,7 +234,13 @@
   {#if loading}
     <p class="text-center py-12 text-gray-400">Chargement...</p>
   {:else if list.length === 0}
-    <p class="text-center py-12 text-gray-500">Aucun article.</p>
+    <div class="text-center py-12">
+      <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="m21 7.5-9-5.25L3 7.5m18 0-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" />
+      </svg>
+      <p class="mt-3 text-sm font-medium text-gray-500">Aucun article</p>
+      <p class="mt-1 text-xs text-gray-400">Cliquez sur "+ Nouvel article" pour ajouter votre premier article</p>
+    </div>
   {:else}
     <div class="overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100">
       <table class="w-full text-left text-sm">

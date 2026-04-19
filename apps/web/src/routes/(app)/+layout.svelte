@@ -4,6 +4,9 @@
   import { syncStore } from '$lib/stores/sync.svelte'
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
+  import WelcomeModal from '$lib/components/WelcomeModal.svelte'
+  import GuidedTour from '$lib/components/GuidedTour.svelte'
+  import { onboarding } from '$lib/stores/onboarding.svelte'
 
   let { children } = $props()
   let shopInitialized = $state(false)
@@ -151,6 +154,18 @@
           </div>
         {/if}
 
+        <!-- Help / restart tour -->
+        <button
+          onclick={() => onboarding.reset()}
+          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-all duration-150 hover:bg-white/5 hover:text-gray-300"
+          title="Relancer le tour guide"
+        >
+          <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+          </svg>
+          Aide
+        </button>
+
         <!-- Logout button -->
         <button
           onclick={() => authStore.logout().then(() => goto('/login'))}
@@ -168,4 +183,7 @@
       {@render children()}
     </main>
   </div>
+
+  <WelcomeModal />
+  <GuidedTour />
 {/if}

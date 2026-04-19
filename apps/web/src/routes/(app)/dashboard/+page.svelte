@@ -1,6 +1,7 @@
 <script lang="ts">
   import { dashboard } from '$lib/api/client'
   import { onMount } from 'svelte'
+  import HelpTip from '$lib/components/HelpTip.svelte'
 
   let data = $state<any>(null)
   let loading = $state(true)
@@ -31,7 +32,10 @@
 
 <div class="p-6 lg:p-8">
   <div class="mb-6">
-    <h1 class="text-2xl font-bold text-gray-900">Tableau de bord</h1>
+    <div class="flex items-center gap-2">
+      <h1 class="text-2xl font-bold text-gray-900">Tableau de bord</h1>
+      <HelpTip text="Les donnees sont mises a jour en temps reel. Le CA et les ventes refletent l'activite depuis minuit (jour) ou le 1er du mois." />
+    </div>
     <p class="text-sm text-gray-500 mt-1">Vue d'ensemble de l'activite</p>
   </div>
 

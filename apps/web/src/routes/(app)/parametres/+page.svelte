@@ -3,6 +3,7 @@
   import { shopStore } from '$lib/stores/shop.svelte'
   import { authStore } from '$lib/stores/auth.svelte'
   import { onMount } from 'svelte'
+  import HelpTip from '$lib/components/HelpTip.svelte'
 
   let loading = $state(true)
   let saving = $state(false)
@@ -165,7 +166,10 @@
 
     <!-- Modules -->
     <div class="mt-8 max-w-2xl rounded-xl bg-white p-6 shadow-sm border border-gray-100">
-      <h2 class="text-lg font-semibold text-gray-900 mb-1">Modules</h2>
+      <div class="flex items-center gap-2 mb-1">
+        <h2 class="text-lg font-semibold text-gray-900">Modules</h2>
+        <HelpTip text="Activez le depot-vente pour gerer des deposants, contrats, commissions et reversements. Ce module ajoute des pages supplementaires dans le menu." />
+      </div>
       <p class="text-sm text-gray-500 mb-5">Activez ou desactivez les fonctionnalites optionnelles</p>
 
       <div class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-4">
