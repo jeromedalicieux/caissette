@@ -3,7 +3,7 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { createMiddleware } from 'hono/factory'
-import { type ShopId, type ShopSettings, DEFAULT_SHOP_SETTINGS } from '@rebond/types'
+import { type ShopId, type ShopSettings, DEFAULT_SHOP_SETTINGS, DEFAULT_SHOP_DISPLAY } from '@rebond/types'
 import { generateUuidV7 } from '@rebond/utils'
 import { shops } from './schema.js'
 
@@ -52,6 +52,10 @@ export function parseSettings(json: string | null): ShopSettings {
 
   return {
     features: { depositSale },
+    display: {
+      ...DEFAULT_SHOP_DISPLAY,
+      ...(raw.display && typeof raw.display === 'object' ? raw.display : {}),
+    },
     defaultCommissionRate: typeof raw.defaultCommissionRate === 'number'
       ? raw.defaultCommissionRate
       : DEFAULT_SHOP_SETTINGS.defaultCommissionRate,

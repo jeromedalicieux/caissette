@@ -169,6 +169,7 @@ api.patch('/shop', async (c) => {
       ...existing,
       ...body.settings,
       features: { ...existing.features, ...(body.settings.features ?? {}) },
+      display: { ...(existing.display ?? {}), ...(body.settings.display ?? {}) },
     }
     delete body.settings
     body.settingsJson = JSON.stringify(merged)
@@ -879,6 +880,228 @@ api.get('/dashboard', async (c) => {
     month: { ca: caMonth, count: countMonth },
     topArticles,
     byPayment,
+  })
+})
+
+// ─── Invoices ───
+
+api.post('/invoices', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  const body = await c.req.json()
+  const { saleId, clientName, clientAddress, clientSiret } = body
+
+  if (!saleId) return c.json({ error: 'saleId requis' }, 400)
+
+  const { sales, saleItems } = await import('@rebond/caisse')
+  const { shops } = await import('@rebond/tenant')
+
+  // Get sale
+  const saleResult = await db.select().from(sales)
+    .where(and(eq(sales.id, saleId), eq(sales.shopId, user.shopId)))
+    .limit(1)
+  const sale = saleResult[0]
+  if (!sale) return c.json({ error: 'Vente introuvable' }, 404)
+
+  // Get sale items
+  const itemsResult = await db.select().from(saleItems)
+    .where(eq(saleItems.saleId, saleId))
+
+  // Get shop info
+  const shopResult = await db.select().from(shops)
+    .where(eq(shops.id, user.shopId)).limit(1)
+  const shop = shopResult[0]
+
+  // Generate sequential invoice number (FACT-YYYY-NNNN)
+  // Count existing invoices this year by counting sales with invoiceNumber set
+  // Since we don't have an invoices table, we'll generate the number from receipt
+  const year = new Date(sale.soldAt).getFullYear()
+  const invoiceNumber = `FACT-${year}-${String(sale.receiptNumber).padStart(4, '0')}`
+
+  const ht = sale.total - sale.vatMarginAmount
+
+  return c.json({
+    invoiceNumber,
+    date: new Date(sale.soldAt).toISOString(),
+    seller: {
+      name: shop?.name ?? '',
+      siret: shop?.siret ?? '',
+      vatNumber: shop?.vatNumber ?? '',
+      address: shop?.address ?? '',
+    },
+    client: {
+      name: clientName ?? 'Client comptoir',
+      address: clientAddress ?? '',
+      siret: clientSiret ?? '',
+    },
+    items: itemsResult.map((item: any) => ({
+      name: item.name,
+      quantity: 1,
+      unitPriceHT: item.vatRegime === 'normal'
+        ? Math.round(item.price / (1 + item.vatRate / 10000))
+        : item.price - item.vatAmount,
+      vatRate: item.vatRate / 100,
+      vatAmount: item.vatAmount,
+      totalTTC: item.price,
+    })),
+    totalHT: ht,
+    totalVAT: sale.vatMarginAmount,
+    totalTTC: sale.total,
+    paymentMethod: sale.paymentMethod,
+    receiptNumber: sale.receiptNumber,
+    legalMentions: [
+      shop?.vatNumber ? `TVA intracommunautaire : ${shop.vatNumber}` : null,
+      'Conditions de paiement : comptant',
+      'Pas d\'escompte pour paiement anticipe',
+      'En cas de retard de paiement, indemnite forfaitaire de 40 EUR pour frais de recouvrement (art. L.441-10 C. com.)',
+    ].filter(Boolean),
+  })
+})
+
+// ─── VAT Summary ───
+
+api.get('/vat-summary', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+
+  if (user.role === 'cashier') {
+    return c.json({ error: 'Acces reserve aux responsables' }, 403)
+  }
+
+  const startParam = c.req.query('start')
+  const endParam = c.req.query('end')
+  if (!startParam || !endParam) {
+    return c.json({ error: 'Parametres start et end requis (YYYY-MM-DD)' }, 400)
+  }
+
+  const start = new Date(startParam).getTime()
+  const end = new Date(endParam + 'T23:59:59.999').getTime()
+
+  const { sales, saleItems } = await import('@rebond/caisse')
+
+  const periodSales = await db.select().from(sales)
+    .where(and(
+      eq(sales.shopId, user.shopId),
+      gte(sales.soldAt, start),
+      lte(sales.soldAt, end),
+      // Include both completed and refunded
+    ))
+    .orderBy(sales.receiptNumber)
+
+  // Aggregate by VAT rate and regime
+  const byRate: Record<string, { baseHT: number; vatAmount: number; totalTTC: number; count: number }> = {}
+  const byPayment: Record<string, number> = {}
+  let totalHT = 0
+  let totalVAT = 0
+  let totalTTC = 0
+  let salesCount = 0
+  let refundsCount = 0
+
+  for (const sale of periodSales) {
+    if (sale.status === 'completed') salesCount++
+    if (sale.status === 'refunded') refundsCount++
+
+    byPayment[sale.paymentMethod] = (byPayment[sale.paymentMethod] ?? 0) + sale.total
+    totalTTC += sale.total
+    totalVAT += sale.vatMarginAmount
+    totalHT += sale.total - sale.vatMarginAmount
+
+    const si = await db.select().from(saleItems).where(eq(saleItems.saleId, sale.id))
+    for (const item of si) {
+      const rateKey = `${item.vatRegime}:${item.vatRate}`
+      if (!byRate[rateKey]) {
+        byRate[rateKey] = { baseHT: 0, vatAmount: 0, totalTTC: 0, count: 0 }
+      }
+      byRate[rateKey].baseHT += item.price - item.vatAmount
+      byRate[rateKey].vatAmount += item.vatAmount
+      byRate[rateKey].totalTTC += item.price
+      byRate[rateKey].count++
+    }
+  }
+
+  // Format the rate breakdown
+  const vatBreakdown = Object.entries(byRate).map(([key, data]) => {
+    const [regime, rateStr = '0'] = key.split(':')
+    return {
+      regime,
+      rate: parseInt(rateStr) / 100,
+      rateLabel: `${(parseInt(rateStr) / 100).toFixed(1)}%`,
+      ...data,
+    }
+  }).sort((a, b) => b.totalTTC - a.totalTTC)
+
+  return c.json({
+    period: { start: startParam, end: endParam },
+    salesCount,
+    refundsCount,
+    totalHT,
+    totalVAT,
+    totalTTC,
+    vatBreakdown,
+    byPayment,
+  })
+})
+
+// ─── CSV Export ───
+
+api.get('/export/csv', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+
+  if (user.role === 'cashier') {
+    return c.json({ error: 'Acces reserve aux responsables' }, 403)
+  }
+
+  const startParam = c.req.query('start')
+  const endParam = c.req.query('end')
+  if (!startParam || !endParam) {
+    return c.json({ error: 'Parametres start et end requis (YYYY-MM-DD)' }, 400)
+  }
+
+  const start = new Date(startParam).getTime()
+  const end = new Date(endParam + 'T23:59:59.999').getTime()
+
+  const { sales, saleItems } = await import('@rebond/caisse')
+
+  const periodSales = await db.select().from(sales)
+    .where(and(eq(sales.shopId, user.shopId), gte(sales.soldAt, start), lte(sales.soldAt, end)))
+    .orderBy(sales.receiptNumber)
+
+  // CSV header
+  const header = 'Date;N° Ticket;Article;Quantite;Prix TTC;TVA;Regime TVA;Taux TVA;Moyen de paiement;Statut'
+  const lines: string[] = [header]
+
+  for (const sale of periodSales) {
+    const si = await db.select().from(saleItems).where(eq(saleItems.saleId, sale.id))
+    const dateStr = new Date(sale.soldAt).toLocaleDateString('fr-FR')
+    const payment = sale.paymentMethod === 'cash' ? 'Especes' : sale.paymentMethod === 'card' ? 'Carte' : sale.paymentMethod === 'check' ? 'Cheque' : 'Autre'
+    const status = sale.status === 'completed' ? 'Terminee' : sale.status === 'refunded' ? 'Remboursee' : sale.status
+
+    for (const item of si) {
+      const regime = item.vatRegime === 'deposit' ? 'Marge (depot)' : item.vatRegime === 'normal' ? 'Normale' : 'Marge'
+      lines.push([
+        dateStr,
+        sale.receiptNumber,
+        `"${item.name.replace(/"/g, '""')}"`,
+        1,
+        (item.price / 100).toFixed(2).replace('.', ','),
+        (item.vatAmount / 100).toFixed(2).replace('.', ','),
+        regime,
+        `${(item.vatRate / 100).toFixed(1)}%`,
+        payment,
+        status,
+      ].join(';'))
+    }
+  }
+
+  const content = lines.join('\n')
+  const filename = `ventes_${startParam}_${endParam}.csv`
+
+  return new Response(content, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
   })
 })
 

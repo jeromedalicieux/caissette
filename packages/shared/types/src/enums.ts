@@ -30,6 +30,13 @@ export const PaymentMethod = {
 } as const
 export type PaymentMethod = (typeof PaymentMethod)[keyof typeof PaymentMethod]
 
+/** Item type */
+export const ItemType = {
+  Product: 'product',
+  Service: 'service',
+} as const
+export type ItemType = (typeof ItemType)[keyof typeof ItemType]
+
 /** Item status */
 export const ItemStatus = {
   Available: 'available',

@@ -5,6 +5,7 @@
   import { shopStore } from '$lib/stores/shop.svelte'
   import { syncStore } from '$lib/stores/sync.svelte'
   import { queueOfflineSale } from '$lib/offline/sync'
+  import { refreshItemsCache, getCachedItems, markItemSoldLocally } from '$lib/offline/items-cache'
   import { printer, printReceipt } from '$lib/printer/escpos'
   import { onMount } from 'svelte'
   import SectionGuide from '$lib/components/SectionGuide.svelte'
@@ -17,29 +18,119 @@
   let processing = $state(false)
   let printing = $state(false)
   let loading = $state(true)
+  let usingCache = $state(false)
   let lastSaleId = $state<string | null>(null)
 
-  onMount(loadItems)
+  // Quick add (montant libre)
+  let showQuickAdd = $state(false)
+  let quickName = $state('')
+  let quickPrice = $state('')
+
+  // Favorites (localStorage)
+  let favorites = $state<Set<string>>(new Set())
+  // Usage counter (localStorage)
+  let usageCount = $state<Record<string, number>>({})
+  // Sort mode
+  let sortMode = $state<'default' | 'popular' | 'favorites'>(shopStore.display.posDefaultSort)
+
+  onMount(() => {
+    // Load favorites & usage from localStorage
+    try {
+      const fav = localStorage.getItem('rebond_favorites')
+      if (fav) favorites = new Set(JSON.parse(fav))
+      const usage = localStorage.getItem('rebond_usage')
+      if (usage) usageCount = JSON.parse(usage)
+    } catch { /* ignore */ }
+    loadItems()
+  })
+
+  function saveFavorites() {
+    localStorage.setItem('rebond_favorites', JSON.stringify([...favorites]))
+  }
+
+  function toggleFavorite(e: Event, itemId: string) {
+    e.stopPropagation()
+    if (favorites.has(itemId)) {
+      favorites.delete(itemId)
+    } else {
+      favorites.add(itemId)
+    }
+    favorites = new Set(favorites) // trigger reactivity
+    saveFavorites()
+  }
+
+  function trackUsage(itemId: string) {
+    usageCount[itemId] = (usageCount[itemId] ?? 0) + 1
+    usageCount = { ...usageCount }
+    localStorage.setItem('rebond_usage', JSON.stringify(usageCount))
+  }
 
   async function loadItems() {
     loading = true
+    usingCache = false
     try {
       availableItems = await items.list('available')
+      // Refresh cache in background
+      refreshItemsCache()
+      localStorage.setItem('rebond_cache_refresh', String(Date.now()))
     } catch (e: any) {
-      error = e.message
+      // Offline — try local cache
+      try {
+        const cached = await getCachedItems()
+        if (cached.length > 0) {
+          availableItems = cached
+          usingCache = true
+        } else {
+          error = 'Hors ligne — aucun article en cache'
+        }
+      } catch {
+        error = e.message
+      }
     }
     loading = false
   }
 
   function filteredItems() {
-    if (!search) return availableItems
-    const q = search.toLowerCase()
-    return availableItems.filter(
-      (i: any) =>
-        i.name.toLowerCase().includes(q) ||
-        (i.sku ?? '').toLowerCase().includes(q) ||
-        (i.category ?? '').toLowerCase().includes(q),
-    )
+    let result = availableItems
+    if (search) {
+      const q = search.toLowerCase()
+      result = result.filter(
+        (i: any) =>
+          i.name.toLowerCase().includes(q) ||
+          (i.sku ?? '').toLowerCase().includes(q) ||
+          (i.category ?? '').toLowerCase().includes(q),
+      )
+    }
+
+    // Sort
+    if (sortMode === 'favorites') {
+      result = [...result].sort((a, b) => {
+        const aFav = favorites.has(a.id) ? 1 : 0
+        const bFav = favorites.has(b.id) ? 1 : 0
+        return bFav - aFav
+      })
+    } else if (sortMode === 'popular') {
+      result = [...result].sort((a, b) => {
+        return (usageCount[b.id] ?? 0) - (usageCount[a.id] ?? 0)
+      })
+    }
+
+    return result
+  }
+
+  function addQuickItem() {
+    const price = Math.round(parseFloat(quickPrice) * 100)
+    if (!quickName || isNaN(price) || price <= 0) return
+    cart.add({
+      itemId: undefined,
+      name: quickName,
+      price,
+      vatRegime: 'normal',
+      vatRate: 2000,
+    })
+    quickName = ''
+    quickPrice = ''
+    showQuickAdd = false
   }
 
   function addToCart(item: any) {
@@ -56,10 +147,14 @@
       vatRegimeValue = item.vat_regime ?? item.vatRegime ?? 'deposit'
     }
 
+    const isService = item.type === 'service'
+    trackUsage(item.id)
+
     cart.add({
       itemId: item.id,
       name: item.name,
       price,
+      type: item.type ?? 'product',
       depositorId: shopStore.hasDepositSale ? depositorId : undefined,
       vatRegime: vatRegimeValue,
       vatRate: item.vat_rate ?? item.vatRate ?? 2000,
@@ -67,8 +162,11 @@
       reversementAmount,
     })
 
-    // Remove from available list
-    availableItems = availableItems.filter((i: any) => i.id !== item.id)
+    // Remove from available list (services stay available — infinite stock)
+    if (!isService) {
+      availableItems = availableItems.filter((i: any) => i.id !== item.id)
+      markItemSoldLocally(item.id)
+    }
     search = ''
   }
 
@@ -96,6 +194,7 @@
           itemId: item.itemId,
           name: item.name,
           price: item.price,
+          type: item.type ?? 'product',
           depositorId: item.depositorId,
           vatRegime: item.vatRegime,
           vatRate: item.vatRate,
@@ -121,6 +220,7 @@
               itemId: item.itemId,
               name: item.name,
               price: item.price,
+              type: item.type ?? 'product',
               depositorId: item.depositorId,
               vatRegime: item.vatRegime,
               vatRate: item.vatRate,
@@ -181,28 +281,90 @@
 <div class="flex h-[calc(100vh)] flex-col md:flex-row">
   <!-- Left panel: Catalog -->
   <div class="flex min-h-0 flex-1 flex-col bg-gray-50">
-    <!-- Search bar -->
+    <!-- Search bar + controls -->
     <div class="p-4 pb-2">
       <div class="flex items-center gap-2 mb-2">
         <SectionGuide
           title="Ecran de caisse"
           description="Cliquez sur un article a gauche pour l'ajouter au panier. Choisissez le moyen de paiement, puis appuyez sur Encaisser."
-          tips={['Recherchez par nom, code ou categorie', 'Vous pouvez ajouter plusieurs articles au panier', 'Le ticket est imprimable apres chaque vente', 'En cas de coupure internet, la vente est sauvegardee hors-ligne']}
+          tips={['Utilisez \"Montant libre\" pour encaisser sans article', 'Cliquez l\'etoile pour mettre un article en favori', 'Triez par popularite pour voir les plus vendus en premier', 'En cas de coupure internet, la vente est sauvegardee hors-ligne']}
         />
       </div>
-      <div class="relative">
-        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
-          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-          </svg>
+      {#if usingCache}
+        <div class="mb-2 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs font-medium text-amber-700">
+          <span class="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+          Mode hors-ligne — articles depuis le cache local
         </div>
-        <input
-          type="text"
-          bind:value={search}
-          placeholder="Rechercher un article..."
-          class="w-full rounded-full bg-white py-2.5 pl-11 pr-4 text-sm shadow-sm outline-none ring-1 ring-gray-200 transition-shadow placeholder:text-gray-400 focus:ring-2 focus:ring-blue-300"
-        />
+      {/if}
+      <div class="flex gap-2">
+        <div class="relative flex-1">
+          <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            bind:value={search}
+            placeholder="Rechercher un article..."
+            class="w-full rounded-full bg-white py-2.5 pl-11 pr-4 text-sm shadow-sm outline-none ring-1 ring-gray-200 transition-shadow placeholder:text-gray-400 focus:ring-2 focus:ring-blue-300"
+          />
+        </div>
+        <button
+          onclick={() => showQuickAdd = !showQuickAdd}
+          class="shrink-0 rounded-full px-4 py-2.5 text-sm font-medium transition-colors
+            {showQuickAdd ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50'}"
+          title="Montant libre"
+        >
+          + Libre
+        </button>
       </div>
+
+      <!-- Sort buttons -->
+      <div class="mt-2 flex gap-1.5">
+        <button onclick={() => sortMode = 'default'}
+          class="rounded-full px-3 py-1 text-xs font-medium transition-colors
+            {sortMode === 'default' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
+          Tous
+        </button>
+        <button onclick={() => sortMode = 'favorites'}
+          class="rounded-full px-3 py-1 text-xs font-medium transition-colors
+            {sortMode === 'favorites' ? 'bg-amber-500 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
+          Favoris
+        </button>
+        <button onclick={() => sortMode = 'popular'}
+          class="rounded-full px-3 py-1 text-xs font-medium transition-colors
+            {sortMode === 'popular' ? 'bg-purple-600 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
+          Populaires
+        </button>
+      </div>
+
+      <!-- Quick add form -->
+      {#if showQuickAdd}
+        <div class="mt-2 flex gap-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-200">
+          <input
+            type="text"
+            bind:value={quickName}
+            placeholder="Libelle (ex: Reparation)"
+            class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+          />
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            bind:value={quickPrice}
+            placeholder="Prix EUR"
+            class="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+          />
+          <button
+            onclick={addQuickItem}
+            disabled={!quickName || !quickPrice}
+            class="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
+          >
+            Ajouter
+          </button>
+        </div>
+      {/if}
     </div>
 
     <!-- Product grid -->
@@ -228,21 +390,48 @@
           <p class="mt-1 text-xs text-gray-400">Ajoutez des articles depuis la page Articles pour les voir ici</p>
         </div>
       {:else}
-        <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <div class="grid gap-3 {shopStore.display.posColumns === 2 ? 'grid-cols-2' : shopStore.display.posColumns === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-3'}">
           {#each filteredItems() as item}
-            <button
+            <div
+              class="group relative rounded-xl bg-white text-left shadow-sm transition-shadow hover:shadow-md cursor-pointer {shopStore.display.posCompactCards ? 'p-3' : 'p-4'} {item.type === 'service' ? 'ring-1 ring-purple-200' : ''} {favorites.has(item.id) ? 'ring-1 ring-amber-300' : ''}"
               onclick={() => addToCart(item)}
-              class="group rounded-xl bg-white p-4 text-left shadow-sm transition-shadow hover:shadow-md"
+              onkeydown={(e) => { if (e.key === 'Enter') addToCart(item) }}
+              role="button"
+              tabindex="0"
             >
-              <div class="truncate text-sm font-medium text-gray-900">{item.name}</div>
-              {#if item.category}
+              <!-- Favorite star -->
+              <button
+                onclick={(e) => toggleFavorite(e, item.id)}
+                class="absolute top-2 right-2 p-1 rounded-full transition-colors
+                  {favorites.has(item.id) ? 'text-amber-400 hover:text-amber-500' : 'text-gray-200 hover:text-amber-300'}"
+                aria-label={favorites.has(item.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+              >
+                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clip-rule="evenodd" />
+                </svg>
+              </button>
+
+              <div class="flex items-center gap-1.5 pr-6">
+                <span class="truncate text-sm font-medium text-gray-900">{item.name}</span>
+                {#if item.type === 'service'}
+                  <span class="shrink-0 rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-purple-700">Service</span>
+                {/if}
+              </div>
+              {#if shopStore.display.showCategories && item.category}
                 <span class="mt-1.5 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{item.category}</span>
               {/if}
               <div class="mt-2 flex items-end justify-between">
-                <span class="text-xs text-gray-400">{item.sku ?? ''}</span>
+                <div class="flex items-center gap-1.5">
+                  {#if shopStore.display.posShowSku}
+                    <span class="text-xs text-gray-400">{item.sku ?? ''}</span>
+                  {/if}
+                  {#if shopStore.display.posShowUsageCount && usageCount[item.id]}
+                    <span class="rounded bg-gray-100 px-1 py-0.5 text-[10px] font-medium text-gray-500">{usageCount[item.id]}x</span>
+                  {/if}
+                </div>
                 <span class="text-lg font-semibold text-blue-600">{formatPrice(item.current_price ?? item.currentPrice)}</span>
               </div>
-            </button>
+            </div>
           {/each}
         </div>
       {/if}

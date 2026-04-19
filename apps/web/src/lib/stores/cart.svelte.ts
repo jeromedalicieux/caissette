@@ -2,6 +2,7 @@ import type { VatRegime } from '@rebond/types'
 
 export interface CartItem {
   itemId?: string
+  type?: 'product' | 'service'
   name: string
   price: number // cents
   costBasis?: number

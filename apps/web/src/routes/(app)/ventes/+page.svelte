@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { sales } from '$lib/api/client'
+  import { sales, invoiceApi } from '$lib/api/client'
   import { authStore } from '$lib/stores/auth.svelte'
   import { printer, printReceipt } from '$lib/printer/escpos'
   import { onMount } from 'svelte'
@@ -13,6 +13,14 @@
   let printing = $state(false)
   let error = $state('')
   let success = $state('')
+  let showInvoice = $state(false)
+  let invoiceData = $state<any>(null)
+  let invoiceLoading = $state(false)
+  let clientName = $state('')
+  let clientAddress = $state('')
+  let clientSiret = $state('')
+  let showInvoiceForm = $state(false)
+  let invoiceSaleId = $state('')
 
   // Filters
   let filterStart = $state('')
@@ -106,6 +114,30 @@
       error = e.message
     }
     printing = false
+  }
+
+  function openInvoiceForm(saleId: string) {
+    invoiceSaleId = saleId
+    clientName = ''
+    clientAddress = ''
+    clientSiret = ''
+    showInvoiceForm = true
+  }
+
+  async function generateInvoice(saleId: string) {
+    invoiceLoading = true
+    try {
+      invoiceData = await invoiceApi.generate(saleId, {
+        name: clientName || undefined,
+        address: clientAddress || undefined,
+        siret: clientSiret || undefined,
+      })
+      showInvoiceForm = false
+      showInvoice = true
+    } catch (e: any) {
+      error = e.message
+    }
+    invoiceLoading = false
   }
 
   const isManager = $derived(authStore.user?.role === 'owner' || authStore.user?.role === 'manager')
@@ -297,6 +329,12 @@
 
         <!-- Actions -->
         <div class="border-t px-6 py-3 flex justify-end gap-2">
+          {#if isManager}
+            <button onclick={() => openInvoiceForm(selectedSale.id)}
+              class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors">
+              Facture
+            </button>
+          {/if}
           <button onclick={handlePrint} disabled={printing}
             class="rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 transition-colors disabled:opacity-50">
             {printing ? 'Impression...' : 'Imprimer'}
@@ -307,6 +345,150 @@
           </button>
         </div>
       {/if}
+    </div>
+  </div>
+{/if}
+
+<!-- Invoice client form modal -->
+{#if showInvoiceForm}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onclick={() => showInvoiceForm = false}>
+    <div class="mx-4 w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onclick={(e) => e.stopPropagation()}>
+      <h2 class="text-lg font-semibold text-gray-900 mb-4">Generer une facture</h2>
+      <p class="text-sm text-gray-500 mb-4">Informations client (optionnel)</p>
+      <div class="space-y-3">
+        <div>
+          <label for="inv-name" class="block text-sm font-medium text-gray-700 mb-1">Nom / Raison sociale</label>
+          <input type="text" id="inv-name" bind:value={clientName} placeholder="Particulier"
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+        </div>
+        <div>
+          <label for="inv-address" class="block text-sm font-medium text-gray-700 mb-1">Adresse</label>
+          <input type="text" id="inv-address" bind:value={clientAddress} placeholder=""
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+        </div>
+        <div>
+          <label for="inv-siret" class="block text-sm font-medium text-gray-700 mb-1">SIRET</label>
+          <input type="text" id="inv-siret" bind:value={clientSiret} placeholder=""
+            class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+        </div>
+      </div>
+      <div class="mt-5 flex justify-end gap-2">
+        <button onclick={() => showInvoiceForm = false}
+          class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors">
+          Annuler
+        </button>
+        <button onclick={() => generateInvoice(invoiceSaleId)} disabled={invoiceLoading}
+          class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50">
+          {invoiceLoading ? 'Generation...' : 'Generer'}
+        </button>
+      </div>
+    </div>
+  </div>
+{/if}
+
+<!-- Invoice display modal -->
+{#if showInvoice && invoiceData}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onclick={() => showInvoice = false}>
+    <div class="mx-4 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl print:shadow-none print:rounded-none" onclick={(e) => e.stopPropagation()}>
+      <div class="p-8" id="invoice-print">
+        <!-- Invoice header -->
+        <div class="flex justify-between items-start mb-8">
+          <div>
+            <h2 class="text-2xl font-bold text-gray-900">FACTURE</h2>
+            <p class="text-sm text-gray-500 mt-1">N. {invoiceData.invoiceNumber ?? invoiceData.number ?? '-'}</p>
+            <p class="text-sm text-gray-500">Date : {invoiceData.date ?? new Date().toLocaleDateString('fr-FR')}</p>
+          </div>
+          <div class="text-right text-sm text-gray-600">
+            {#if invoiceData.seller}
+              <div class="font-semibold text-gray-900">{invoiceData.seller.name}</div>
+              <div>{invoiceData.seller.address}</div>
+              <div>SIRET : {invoiceData.seller.siret}</div>
+              {#if invoiceData.seller.vatNumber}
+                <div>TVA : {invoiceData.seller.vatNumber}</div>
+              {/if}
+            {/if}
+          </div>
+        </div>
+
+        <!-- Client info -->
+        {#if invoiceData.client && (invoiceData.client.name || invoiceData.client.address || invoiceData.client.siret)}
+          <div class="mb-6 rounded-lg bg-gray-50 p-4">
+            <div class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Client</div>
+            {#if invoiceData.client.name}<div class="text-sm font-medium text-gray-900">{invoiceData.client.name}</div>{/if}
+            {#if invoiceData.client.address}<div class="text-sm text-gray-600">{invoiceData.client.address}</div>{/if}
+            {#if invoiceData.client.siret}<div class="text-sm text-gray-600">SIRET : {invoiceData.client.siret}</div>{/if}
+          </div>
+        {/if}
+
+        <!-- Items table -->
+        {#if invoiceData.items}
+          <div class="overflow-hidden rounded-lg border border-gray-200 mb-6">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50">
+                <tr class="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <th class="px-4 py-3 text-left">Designation</th>
+                  <th class="px-4 py-3 text-right">Prix HT</th>
+                  <th class="px-4 py-3 text-right">TVA</th>
+                  <th class="px-4 py-3 text-right">Prix TTC</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                {#each invoiceData.items as item}
+                  <tr>
+                    <td class="px-4 py-3 text-gray-900">{item.name}</td>
+                    <td class="px-4 py-3 text-right">{formatPrice(item.priceHT ?? item.price_ht ?? 0)}</td>
+                    <td class="px-4 py-3 text-right text-amber-700">{formatPrice(item.vatAmount ?? item.vat_amount ?? 0)}</td>
+                    <td class="px-4 py-3 text-right font-medium">{formatPrice(item.priceTTC ?? item.price_ttc ?? item.price ?? 0)}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+
+        <!-- Totals -->
+        <div class="flex justify-end mb-8">
+          <div class="w-64 space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-gray-600">Total HT</span>
+              <span class="font-medium">{formatPrice(invoiceData.totalHT ?? invoiceData.total_ht ?? 0)}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">TVA</span>
+              <span class="font-medium text-amber-700">{formatPrice(invoiceData.totalVAT ?? invoiceData.total_vat ?? 0)}</span>
+            </div>
+            <div class="flex justify-between border-t border-gray-200 pt-2 text-base font-bold">
+              <span>Total TTC</span>
+              <span>{formatPrice(invoiceData.totalTTC ?? invoiceData.total_ttc ?? 0)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Legal mentions -->
+        <div class="border-t border-gray-200 pt-4 text-[10px] text-gray-400 space-y-1">
+          {#if invoiceData.legalMentions}
+            {#each invoiceData.legalMentions as mention}
+              <p>{mention}</p>
+            {/each}
+          {:else}
+            <p>TVA sur la marge - Articles 297 A du CGI</p>
+            <p>En cas de retard de paiement, une penalite de 3 fois le taux d'interet legal sera appliquee.</p>
+            <p>Indemnite forfaitaire pour frais de recouvrement : 40 EUR (art. D.441-5 du Code de commerce).</p>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Print/Close actions -->
+      <div class="border-t px-6 py-3 flex justify-end gap-2 print:hidden">
+        <button onclick={() => window.print()}
+          class="rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 transition-colors">
+          Imprimer
+        </button>
+        <button onclick={() => showInvoice = false}
+          class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors">
+          Fermer
+        </button>
+      </div>
     </div>
   </div>
 {/if}

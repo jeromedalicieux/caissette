@@ -139,8 +139,10 @@ export const depositors = {
 // ─── Items ───
 
 export const items = {
-  list(status = 'available') {
-    return request<any[]>(`/api/items?status=${status}`)
+  list(status = 'available', type?: string) {
+    const params = new URLSearchParams({ status })
+    if (type) params.set('type', type)
+    return request<any[]>(`/api/items?${params.toString()}`)
   },
 
   get(id: string) {
@@ -313,6 +315,48 @@ export const exportApi = {
     }
     const blob = await res.blob()
     const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'FEC.txt'
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+}
+
+// ─── Invoices ───
+
+export const invoiceApi = {
+  generate(saleId: string, client?: { name?: string; address?: string; siret?: string }) {
+    return request<any>('/api/invoices', {
+      method: 'POST',
+      body: JSON.stringify({ saleId, ...client }),
+    })
+  },
+}
+
+// ─── VAT ───
+
+export const vatApi = {
+  summary(start: string, end: string) {
+    return request<any>(`/api/vat-summary?start=${start}&end=${end}`)
+  },
+}
+
+// ─── CSV Export ───
+
+export const csvExport = {
+  async download(start: string, end: string) {
+    const token = getAuthToken()
+    const res = await fetch(`${API_BASE}/api/export/csv?start=${start}&end=${end}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText }))
+      throw new ApiError(res.status, (body as any).error ?? 'Erreur serveur')
+    }
+    const blob = await res.blob()
+    const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'ventes.csv'
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

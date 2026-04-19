@@ -29,6 +29,7 @@ export const createSaleSchema = z.object({
   items: z.array(
     z.object({
       itemId: z.string().optional(),
+      type: z.enum(['product', 'service']).default('product'),
       name: z.string(),
       price: z.number().int().positive(),
       costBasis: z.number().int().nonnegative().optional(),
@@ -154,13 +155,17 @@ export function createCaisseRoutes(db: DrizzleD1Database, eventBus: EventBus) {
 
     for (const item of body.items) {
       if (item.itemId) {
-        await eventBus.emit('item.sold', {
-          saleId,
-          shopId,
-          itemId: item.itemId as ItemId,
-          price: item.price as Cents,
-          paymentMethod: body.paymentMethod as PaymentMethod,
-        })
+        // For services, don't emit item.sold (they stay available, infinite stock)
+        const isService = item.type === 'service'
+        if (!isService) {
+          await eventBus.emit('item.sold', {
+            saleId,
+            shopId,
+            itemId: item.itemId as ItemId,
+            price: item.price as Cents,
+            paymentMethod: body.paymentMethod as PaymentMethod,
+          })
+        }
       }
     }
 

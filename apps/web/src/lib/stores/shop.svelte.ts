@@ -1,9 +1,13 @@
 import { shops } from '$lib/api/client'
-import type { ShopSettings } from '@rebond/types'
-import { DEFAULT_SHOP_SETTINGS } from '@rebond/types'
+import type { ShopSettings, ShopDisplay } from '@rebond/types'
+import { DEFAULT_SHOP_SETTINGS, DEFAULT_SHOP_DISPLAY } from '@rebond/types'
 
 function createShopStore() {
-  let settings = $state<ShopSettings>({ ...DEFAULT_SHOP_SETTINGS, features: { ...DEFAULT_SHOP_SETTINGS.features } })
+  let settings = $state<ShopSettings>({
+    ...DEFAULT_SHOP_SETTINGS,
+    features: { ...DEFAULT_SHOP_SETTINGS.features },
+    display: { ...DEFAULT_SHOP_DISPLAY },
+  })
   let loading = $state(true)
 
   return {
@@ -16,15 +20,39 @@ function createShopStore() {
     get hasDepositSale() {
       return settings.features.depositSale
     },
+    get display(): ShopDisplay {
+      return settings.display ?? DEFAULT_SHOP_DISPLAY
+    },
 
     async init() {
       try {
         const shop = await shops.getCurrent()
         if (shop.settings) {
-          settings = shop.settings
+          settings = {
+            ...DEFAULT_SHOP_SETTINGS,
+            ...shop.settings,
+            features: { ...DEFAULT_SHOP_SETTINGS.features, ...(shop.settings.features ?? {}) },
+            display: { ...DEFAULT_SHOP_DISPLAY, ...(shop.settings.display ?? {}) },
+          }
+          // Cache for offline use
+          localStorage.setItem('rebond_shop_settings', JSON.stringify(settings))
         }
       } catch {
-        // keep defaults
+        // Offline — try cached settings
+        try {
+          const cached = localStorage.getItem('rebond_shop_settings')
+          if (cached) {
+            const parsed = JSON.parse(cached)
+            settings = {
+              ...DEFAULT_SHOP_SETTINGS,
+              ...parsed,
+              features: { ...DEFAULT_SHOP_SETTINGS.features, ...(parsed.features ?? {}) },
+              display: { ...DEFAULT_SHOP_DISPLAY, ...(parsed.display ?? {}) },
+            }
+          }
+        } catch {
+          /* keep defaults */
+        }
       }
       loading = false
     },
@@ -32,11 +60,11 @@ function createShopStore() {
     async updateSettings(partial: Partial<ShopSettings>) {
       try {
         await shops.updateCurrent({ settings: partial })
-        // Merge locally
         settings = {
           ...settings,
           ...partial,
           features: { ...settings.features, ...(partial.features ?? {}) },
+          display: { ...settings.display, ...(partial.display ?? {}) },
         }
       } catch (e) {
         throw e

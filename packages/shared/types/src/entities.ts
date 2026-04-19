@@ -17,6 +17,7 @@ import type {
   IdDocumentType,
   ItemCondition,
   ItemStatus,
+  ItemType,
   PaymentMethod,
   PoliceLedgerEntryType,
   PricingRuleScope,
@@ -89,6 +90,7 @@ export interface Contract {
 export interface Item {
   id: ItemId
   shopId: ShopId
+  type: ItemType
   contractId: ContractId | null
   depositorId: DepositorId | null
   sku: string | null
@@ -215,14 +217,36 @@ export interface ShopFeatures {
   depositSale: boolean
 }
 
+export interface ShopDisplay {
+  posColumns: 2 | 3 | 4           // colonnes grille caisse
+  posDefaultSort: 'popular' | 'favorites' | 'default'  // tri par defaut
+  posShowSku: boolean              // afficher les codes SKU
+  posShowUsageCount: boolean       // afficher le compteur d'utilisation
+  posCompactCards: boolean         // cartes compactes
+  showCategories: boolean          // afficher les categories sur les cartes
+  accentColor: 'blue' | 'indigo' | 'emerald' | 'rose' | 'amber' // couleur d'accent
+}
+
 export interface ShopSettings {
   features: ShopFeatures
+  display: ShopDisplay
   defaultCommissionRate: number // Bps (basis points, e.g. 4000 = 40%)
   receiptFooter: string
 }
 
+export const DEFAULT_SHOP_DISPLAY: ShopDisplay = {
+  posColumns: 3,
+  posDefaultSort: 'popular',
+  posShowSku: false,
+  posShowUsageCount: true,
+  posCompactCards: false,
+  showCategories: true,
+  accentColor: 'blue',
+}
+
 export const DEFAULT_SHOP_SETTINGS: ShopSettings = {
   features: { depositSale: false },
+  display: { ...DEFAULT_SHOP_DISPLAY },
   defaultCommissionRate: 4000,
   receiptFooter: '',
 }

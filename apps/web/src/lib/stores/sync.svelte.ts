@@ -13,6 +13,7 @@ function createSyncStore() {
   let online = $state(true)
   let offlineSalesCount = $state(0)
   let syncing = $state(false)
+  let lastSyncResult = $state<{ synced: number; failed: number } | null>(null)
 
   if (typeof window !== 'undefined') {
     online = navigator.onLine
@@ -40,11 +41,13 @@ function createSyncStore() {
     syncing = true
     try {
       const result = await syncPendingSales()
+      lastSyncResult = result
       if (result.synced > 0) {
         console.log(`Synced ${result.synced} offline sales`)
       }
     } catch (e) {
       console.error('Sync failed:', e)
+      lastSyncResult = { synced: 0, failed: -1 }
     }
     await refreshPendingCount()
     syncing = false
@@ -80,6 +83,9 @@ function createSyncStore() {
     },
     markSynced(id: string) {
       queue = queue.filter((a) => a.id !== id)
+    },
+    get lastSyncResult() {
+      return lastSyncResult
     },
     refreshPendingCount,
     syncOfflineSales,

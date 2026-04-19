@@ -10,9 +10,11 @@
   let loading = $state(true)
   let error = $state('')
   let statusFilter = $state('available')
+  let typeFilter = $state<string>('')
   let editingId = $state<string | null>(null)
 
   // Form
+  let itemType = $state<'product' | 'service'>('product')
   let name = $state('')
   let description = $state('')
   let category = $state('')
@@ -33,7 +35,7 @@
   async function loadList() {
     loading = true
     try {
-      list = await items.list(statusFilter)
+      list = await items.list(statusFilter, typeFilter || undefined)
     } catch (e: any) {
       error = e.message
     }
@@ -47,6 +49,7 @@
   }
 
   function resetForm() {
+    itemType = 'product'
     name = description = category = brand = size = initialPrice = currentPrice = depositorId = ''
     vatRegime = shopStore.hasDepositSale ? 'deposit' : 'normal'
     vatRate = 2000
@@ -55,6 +58,7 @@
 
   function startEdit(item: any) {
     editingId = item.id
+    itemType = item.type ?? 'product'
     name = item.name ?? ''
     description = item.description ?? ''
     category = item.category ?? ''
@@ -84,11 +88,12 @@
       } else {
         const priceInCents = Math.round(parseFloat(initialPrice) * 100)
         await items.create({
+          type: itemType,
           name,
           description: description || undefined,
           category: category || undefined,
-          brand: brand || undefined,
-          size: size || undefined,
+          brand: itemType === 'service' ? undefined : (brand || undefined),
+          size: itemType === 'service' ? undefined : (size || undefined),
           initialPrice: priceInCents,
           depositorId: depositorId || undefined,
           vatRegime,
@@ -161,13 +166,29 @@
         </div>
         <p class="text-sm text-gray-500 mt-1">{shopStore.hasDepositSale ? 'Inventaire et gestion des articles en depot' : 'Inventaire et gestion des articles'}</p>
       </div>
-      <select bind:value={statusFilter} onchange={() => loadList()}
-        class="rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
-        <option value="available">En vente</option>
-        <option value="sold">Vendus</option>
-        <option value="returned">Restitues</option>
-        <option value="destroyed">Supprimes</option>
-      </select>
+      <div class="flex items-center gap-2">
+        <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <button onclick={() => { typeFilter = ''; loadList() }}
+            class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {typeFilter === '' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}">
+            Tous
+          </button>
+          <button onclick={() => { typeFilter = 'product'; loadList() }}
+            class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {typeFilter === 'product' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}">
+            Produits
+          </button>
+          <button onclick={() => { typeFilter = 'service'; loadList() }}
+            class="rounded-md px-3 py-1.5 text-xs font-medium transition-colors {typeFilter === 'service' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}">
+            Services
+          </button>
+        </div>
+        <select bind:value={statusFilter} onchange={() => loadList()}
+          class="rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+          <option value="available">En vente</option>
+          <option value="sold">Vendus</option>
+          <option value="returned">Restitues</option>
+          <option value="destroyed">Supprimes</option>
+        </select>
+      </div>
     </div>
     <button onclick={() => { if (showForm) { showForm = false; resetForm() } else { showForm = true } }}
       class="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors">
@@ -183,6 +204,24 @@
     <form onsubmit={(e) => { e.preventDefault(); handleSubmit() }}
       class="mb-6 rounded-xl bg-white p-6 shadow-sm border border-gray-100">
       <h2 class="text-lg font-semibold text-gray-900 mb-4">{editingId ? 'Modifier l\'article' : 'Nouvel article'}</h2>
+      {#if !editingId}
+        <div class="mb-5">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Type</label>
+          <div class="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 w-fit">
+            <button type="button" onclick={() => itemType = 'product'}
+              class="rounded-md px-4 py-2 text-sm font-medium transition-colors {itemType === 'product' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}">
+              Produit
+            </button>
+            <button type="button" onclick={() => itemType = 'service'}
+              class="rounded-md px-4 py-2 text-sm font-medium transition-colors {itemType === 'service' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}">
+              Service
+            </button>
+          </div>
+          {#if itemType === 'service'}
+            <p class="mt-2 text-xs text-purple-600 font-medium">Service (stock illimite) — pas de code SKU, reste disponible apres chaque vente</p>
+          {/if}
+        </div>
+      {/if}
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div class="sm:col-span-2">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Nom *</label>
@@ -190,16 +229,18 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Categorie</label>
-          <input type="text" bind:value={category} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" placeholder="Vetements, Meubles..." />
+          <input type="text" bind:value={category} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" placeholder="{itemType === 'service' ? 'Reparation, Location...' : 'Vetements, Meubles...'}" />
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Marque</label>
-          <input type="text" bind:value={brand} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">Taille</label>
-          <input type="text" bind:value={size} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" placeholder="M, 42..." />
-        </div>
+        {#if itemType !== 'service'}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Marque</label>
+            <input type="text" bind:value={brand} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Taille</label>
+            <input type="text" bind:value={size} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" placeholder="M, 42..." />
+          </div>
+        {/if}
         {#if editingId}
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Prix actuel (EUR)</label>
@@ -268,7 +309,12 @@
           {#each list as item}
             <tr class="hover:bg-gray-50/50 transition-colors">
               <td class="px-5 py-4 font-mono text-xs text-gray-500">{item.sku ?? '-'}</td>
-              <td class="px-5 py-4 font-medium text-gray-900">{item.name}</td>
+              <td class="px-5 py-4">
+                <span class="font-medium text-gray-900">{item.name}</span>
+                {#if item.type === 'service'}
+                  <span class="ml-1.5 inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-purple-700">Service</span>
+                {/if}
+              </td>
               <td class="px-5 py-4 text-gray-600">{item.category ?? '-'}</td>
               <td class="px-5 py-4 font-medium">{formatPrice(item.current_price ?? item.currentPrice)}</td>
               <td class="px-5 py-4">

@@ -10,6 +10,7 @@ import { items, pricingRules } from './schema.js'
 export { items, pricingRules } from './schema.js'
 
 export const createItemSchema = z.object({
+  type: z.enum(['product', 'service']).default('product'),
   contractId: z.string().optional(),
   depositorId: z.string().optional(),
   name: z.string().trim().min(1),
@@ -51,10 +52,13 @@ export function createCatalogRoutes(db: DrizzleD1Database, eventBus: EventBus) {
   app.get('/', async (c) => {
     const shopId = c.req.header('X-Shop-Id') as ShopId
     const status = c.req.query('status') ?? 'available'
+    const type = c.req.query('type') // optional filter: 'product' | 'service'
+    const conditions = [eq(items.shopId, shopId), eq(items.status, status)]
+    if (type) conditions.push(eq(items.type, type))
     const result = await db
       .select()
       .from(items)
-      .where(and(eq(items.shopId, shopId), eq(items.status, status)))
+      .where(and(...conditions))
     return c.json(result)
   })
 
@@ -64,20 +68,22 @@ export function createCatalogRoutes(db: DrizzleD1Database, eventBus: EventBus) {
     const body = createItemSchema.parse(await c.req.json())
     const id = generateUuidV7() as ItemId
     const now = Date.now()
-    const sku = generateBarcode()
+    const isService = body.type === 'service'
+    const sku = isService ? null : generateBarcode()
 
     await db.insert(items).values({
       id,
       shopId,
+      type: body.type,
       contractId: body.contractId ?? null,
       depositorId: body.depositorId ?? null,
       sku,
       name: body.name,
       description: body.description ?? null,
       category: body.category ?? null,
-      brand: body.brand ?? null,
-      size: body.size ?? null,
-      condition: body.condition ?? null,
+      brand: isService ? null : (body.brand ?? null),
+      size: isService ? null : (body.size ?? null),
+      condition: isService ? null : (body.condition ?? null),
       photosR2Keys: null,
       initialPrice: body.initialPrice,
       currentPrice: body.initialPrice,

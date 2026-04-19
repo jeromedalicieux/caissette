@@ -5,6 +5,7 @@ export const items = sqliteTable(
   {
     id: text('id').primaryKey(),
     shopId: text('shop_id').notNull(),
+    type: text('type').notNull().default('product'),
     contractId: text('contract_id'),
     depositorId: text('depositor_id'),
     sku: text('sku'),

@@ -19,14 +19,14 @@ export async function getPendingCount(): Promise<number> {
 
 /** Get all pending sales */
 export async function getPendingSales(): Promise<PendingSale[]> {
-  return offlineDb.pendingSales.where('status').anyOf(['pending', 'failed']).toArray()
+  return offlineDb.pendingSales.where('status').anyOf(['pending', 'failed', 'conflict']).toArray()
 }
 
 /** Sync all pending sales to the server */
 export async function syncPendingSales(): Promise<{ synced: number; failed: number }> {
   const pending = await offlineDb.pendingSales
     .where('status')
-    .anyOf(['pending', 'failed'])
+    .anyOf(['pending', 'failed', 'conflict'])
     .sortBy('createdAt')
 
   let synced = 0
@@ -52,10 +52,13 @@ export async function syncPendingSales(): Promise<{ synced: number; failed: numb
       })
       synced++
     } catch (e: any) {
-      // Mark as failed
+      const errorMsg = e.message ?? 'Erreur inconnue'
+      // 409 = conflict (item already sold by another cashier)
+      const isConflict = e.status === 409 || errorMsg.includes('deja')
+
       await offlineDb.pendingSales.update(sale.id!, {
-        status: 'failed',
-        error: e.message,
+        status: isConflict ? 'conflict' : 'failed',
+        error: isConflict ? 'Conflit: un article a deja ete vendu par un autre caissier' : errorMsg,
       })
       failed++
     }

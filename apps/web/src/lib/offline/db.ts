@@ -18,18 +18,40 @@ export interface PendingSale {
   customerNote?: string
   total: number
   createdAt: number
-  status: 'pending' | 'syncing' | 'synced' | 'failed'
+  status: 'pending' | 'syncing' | 'synced' | 'failed' | 'conflict'
   error?: string
   serverSaleId?: string
 }
 
+export interface CachedItem {
+  id: string
+  shopId: string
+  type: string // 'product' | 'service'
+  name: string
+  sku: string | null
+  category: string | null
+  brand: string | null
+  size: string | null
+  currentPrice: number
+  vatRegime: string
+  vatRate: number
+  depositorId: string | null
+  status: string
+  data: string // full JSON of the item for any other fields
+}
+
 class RebondOfflineDB extends Dexie {
   pendingSales!: Table<PendingSale>
+  cachedItems!: Table<CachedItem>
 
   constructor() {
     super('rebond-offline')
     this.version(1).stores({
       pendingSales: '++id, tempId, status, createdAt',
+    })
+    this.version(2).stores({
+      pendingSales: '++id, tempId, status, createdAt',
+      cachedItems: 'id, shopId, status, type',
     })
   }
 }

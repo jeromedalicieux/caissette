@@ -17,6 +17,7 @@
   let email = $state('')
   let vatRegime = $state('margin')
   let togglingDeposit = $state(false)
+  let savingDisplay = $state(false)
   let exportingFec = $state(false)
   let fecStart = $state('')
   let fecEnd = $state('')
@@ -96,6 +97,18 @@
   })
 
   const isManager = $derived(authStore.user?.role === 'owner' || authStore.user?.role === 'manager')
+
+  async function updateDisplay(key: string, value: any) {
+    savingDisplay = true
+    error = ''
+    try {
+      await shopStore.updateSettings({ display: { ...shopStore.display, [key]: value } } as any)
+      success = 'Affichage mis a jour.'
+    } catch (e: any) {
+      error = e.message
+    }
+    savingDisplay = false
+  }
 </script>
 
 <svelte:head>
@@ -201,6 +214,115 @@
               {shopStore.hasDepositSale ? 'translate-x-5' : 'translate-x-0'}"
           ></span>
         </button>
+      </div>
+    </div>
+
+    <!-- Affichage -->
+    <div class="mt-8 max-w-2xl rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+      <div class="flex items-center gap-2 mb-1">
+        <h2 class="text-lg font-semibold text-gray-900">Affichage</h2>
+        <SectionGuide
+          title="Options d'affichage"
+          description="Personnalisez l'apparence de votre caisse et de l'interface."
+          tips={['Les colonnes de la grille s\'adaptent a la taille de l\'ecran', 'Le tri par defaut determine l\'ordre des articles a l\'ouverture de la caisse', 'Les options sont sauvegardees automatiquement']}
+        />
+      </div>
+      <p class="text-sm text-gray-500 mb-5">Personnalisez l'interface de votre caisse</p>
+
+      <div class="space-y-5">
+        <!-- Colonnes grille caisse -->
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-sm font-medium text-gray-900">Colonnes de la grille (caisse)</div>
+            <div class="text-xs text-gray-500 mt-0.5">Nombre de colonnes sur grand ecran</div>
+          </div>
+          <div class="flex gap-1.5">
+            {#each [2, 3, 4] as cols}
+              <button
+                onclick={() => updateDisplay('posColumns', cols)}
+                class="rounded-lg px-3.5 py-2 text-sm font-medium transition-colors
+                  {shopStore.display.posColumns === cols ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+              >
+                {cols}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Tri par defaut -->
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-sm font-medium text-gray-900">Tri par defaut</div>
+            <div class="text-xs text-gray-500 mt-0.5">Ordre des articles a l'ouverture de la caisse</div>
+          </div>
+          <div class="flex gap-1.5">
+            {#each [
+              { v: 'popular', l: 'Populaires' },
+              { v: 'favorites', l: 'Favoris' },
+              { v: 'default', l: 'Ordre normal' },
+            ] as opt}
+              <button
+                onclick={() => updateDisplay('posDefaultSort', opt.v)}
+                class="rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                  {shopStore.display.posDefaultSort === opt.v ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+              >
+                {opt.l}
+              </button>
+            {/each}
+          </div>
+        </div>
+
+        <!-- Toggles -->
+        {#each [
+          { key: 'posShowSku', label: 'Afficher les codes SKU', desc: 'Codes articles visibles sur les cartes de la caisse' },
+          { key: 'posShowUsageCount', label: 'Compteur d\'utilisation', desc: 'Nombre de fois qu\'un article a ete vendu' },
+          { key: 'posCompactCards', label: 'Cartes compactes', desc: 'Reduit l\'espacement pour afficher plus d\'articles' },
+          { key: 'showCategories', label: 'Afficher les categories', desc: 'Badge de categorie sur les cartes articles' },
+        ] as toggle}
+          <div class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3">
+            <div>
+              <div class="text-sm font-medium text-gray-900">{toggle.label}</div>
+              <div class="text-xs text-gray-500 mt-0.5">{toggle.desc}</div>
+            </div>
+            <button
+              onclick={() => updateDisplay(toggle.key, !(shopStore.display as any)[toggle.key])}
+              disabled={savingDisplay}
+              class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 disabled:opacity-50
+                {(shopStore.display as any)[toggle.key] ? 'bg-blue-600' : 'bg-gray-200'}"
+              role="switch"
+              aria-checked={(shopStore.display as any)[toggle.key]}
+            >
+              <span
+                class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200
+                  {(shopStore.display as any)[toggle.key] ? 'translate-x-5' : 'translate-x-0'}"
+              ></span>
+            </button>
+          </div>
+        {/each}
+
+        <!-- Couleur d'accent -->
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="text-sm font-medium text-gray-900">Couleur d'accent</div>
+            <div class="text-xs text-gray-500 mt-0.5">Couleur principale de l'interface</div>
+          </div>
+          <div class="flex gap-2">
+            {#each [
+              { v: 'blue', bg: 'bg-blue-500' },
+              { v: 'indigo', bg: 'bg-indigo-500' },
+              { v: 'emerald', bg: 'bg-emerald-500' },
+              { v: 'rose', bg: 'bg-rose-500' },
+              { v: 'amber', bg: 'bg-amber-500' },
+            ] as color}
+              <button
+                onclick={() => updateDisplay('accentColor', color.v)}
+                class="h-8 w-8 rounded-full {color.bg} transition-transform hover:scale-110
+                  {shopStore.display.accentColor === color.v ? 'ring-2 ring-offset-2 ring-gray-900 scale-110' : ''}"
+                aria-label="Couleur {color.v}"
+              ></button>
+            {/each}
+          </div>
+        </div>
       </div>
     </div>
 
