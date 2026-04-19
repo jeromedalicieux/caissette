@@ -55,6 +55,17 @@
     cashGiven ? Math.round(parseFloat(cashGiven) * 100) - cart.total : 0
   )
 
+  // Barcode scanner (USB scanner = rapid keystrokes ending with Enter)
+  let scanBuffer = $state('')
+  let scanTimeout: ReturnType<typeof setTimeout> | null = null
+  let scanFeedback = $state('')
+
+  // Cash float (fond de caisse)
+  let showCashFloat = $state(false)
+  let cashFloatInput = $state('')
+  let cashFloat = $state(0) // cents
+  let todayKey = $derived(new Date().toISOString().slice(0, 10))
+
   // Extract unique categories
   let categories = $derived(() => {
     const cats = new Set<string>()
@@ -72,8 +83,80 @@
       if (usage) usageCount = JSON.parse(usage)
       const savedView = localStorage.getItem('rebond_view_mode')
       if (savedView && ['grid', 'list', 'tiles'].includes(savedView)) viewMode = savedView as any
+      // Load cash float for today
+      const floatData = localStorage.getItem(`rebond_cash_float_${todayKey}`)
+      if (floatData) cashFloat = parseInt(floatData)
     } catch { /* ignore */ }
+
+    // Barcode scanner listener (USB scanners type fast then press Enter)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+      if (e.key === 'Enter' && scanBuffer.length >= 3) {
+        e.preventDefault()
+        handleBarcodeScan(scanBuffer)
+        scanBuffer = ''
+        return
+      }
+
+      if (e.key.length === 1) {
+        scanBuffer += e.key
+        if (scanTimeout) clearTimeout(scanTimeout)
+        scanTimeout = setTimeout(() => { scanBuffer = '' }, 100)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+
     loadItems()
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      if (scanTimeout) clearTimeout(scanTimeout)
+    }
+  })
+
+  function handleBarcodeScan(code: string) {
+    // Search by SKU first, then by name
+    const item = availableItems.find((i: any) =>
+      (i.sku ?? '').toLowerCase() === code.toLowerCase() ||
+      (i.sku ?? '') === code
+    )
+    if (item) {
+      addToCart(item)
+      scanFeedback = `${item.name} ajoute`
+      setTimeout(() => { scanFeedback = '' }, 2000)
+    } else {
+      // Try partial match
+      const partial = availableItems.find((i: any) =>
+        (i.sku ?? '').includes(code) || i.name.toLowerCase().includes(code.toLowerCase())
+      )
+      if (partial) {
+        addToCart(partial)
+        scanFeedback = `${partial.name} ajoute`
+        setTimeout(() => { scanFeedback = '' }, 2000)
+      } else {
+        scanFeedback = `Code "${code}" non trouve`
+        setTimeout(() => { scanFeedback = '' }, 3000)
+      }
+    }
+  }
+
+  function setCashFloat() {
+    const val = parseFloat(cashFloatInput.replace(',', '.'))
+    if (isNaN(val) || val < 0) return
+    cashFloat = Math.round(val * 100)
+    localStorage.setItem(`rebond_cash_float_${todayKey}`, String(cashFloat))
+    showCashFloat = false
+    cashFloatInput = ''
+  }
+
+  // Estimated cash in drawer
+  let cashInDrawer = $derived(() => {
+    // This is a rough estimate — cash float + cash sales today
+    // We can't track all cash sales without API call, so just show the float
+    return cashFloat
   })
 
   function saveFavorites() {
@@ -285,6 +368,7 @@
           itemId: item.itemId,
           name: item.name,
           price: item.price,
+          quantity: item.quantity,
           discount: item.discount ?? 0,
           type: item.type ?? 'product',
           depositorId: item.depositorId,
@@ -298,6 +382,15 @@
       const totalPaid = cart.total
       success = `Vente #${result.receiptNumber} enregistree -- ${formatPrice(totalPaid)}`
       lastSaleId = result.id
+
+      // Update cash float tracking
+      if (paymentMethod === 'cash' || (useMultiPayment && payments.some(p => p.method === 'cash'))) {
+        const cashAmount = useMultiPayment
+          ? payments.filter(p => p.method === 'cash').reduce((s, p) => s + p.amount, 0)
+          : totalPaid
+        cashFloat += cashAmount
+        localStorage.setItem(`rebond_cash_float_${todayKey}`, String(cashFloat))
+      }
 
       // Show change modal for cash payments
       if (paymentMethod === 'cash' && !useMultiPayment) {
@@ -628,20 +721,41 @@
           </span>
         {/if}
       </div>
-      {#if cart.count > 0}
+      <div class="flex items-center gap-3">
+        <!-- Cash float button -->
         <button
-          onclick={() => showGlobalDiscount = !showGlobalDiscount}
-          class="text-xs font-medium transition-colors {cart.totalDiscount > 0 ? 'text-red-600' : 'text-gray-400 hover:text-blue-600'}"
-          title="Remise globale"
+          onclick={() => showCashFloat = !showCashFloat}
+          class="text-xs font-medium transition-colors {cashFloat > 0 ? 'text-green-600' : 'text-gray-400 hover:text-green-500'}"
+          title="Fond de caisse"
         >
-          {#if cart.totalDiscount > 0}
-            -{formatPrice(cart.totalDiscount)}
+          {#if cashFloat > 0}
+            Caisse: {formatPrice(cashFloat)}
           {:else}
-            % Remise
+            Fond de caisse
           {/if}
         </button>
-      {/if}
+        {#if cart.count > 0}
+          <button
+            onclick={() => showGlobalDiscount = !showGlobalDiscount}
+            class="text-xs font-medium transition-colors {cart.totalDiscount > 0 ? 'text-red-600' : 'text-gray-400 hover:text-blue-600'}"
+            title="Remise globale"
+          >
+            {#if cart.totalDiscount > 0}
+              -{formatPrice(cart.totalDiscount)}
+            {:else}
+              % Remise
+            {/if}
+          </button>
+        {/if}
+      </div>
     </div>
+
+    <!-- Scan feedback -->
+    {#if scanFeedback}
+      <div class="mx-5 mt-2 rounded-lg px-3 py-2 text-xs font-medium {scanFeedback.includes('non trouve') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}">
+        {scanFeedback}
+      </div>
+    {/if}
 
     <!-- Messages -->
     <div class="px-5">
@@ -666,6 +780,33 @@
         </div>
       {/if}
     </div>
+
+    <!-- Cash float form -->
+    {#if showCashFloat}
+      <div class="mx-5 mt-3 rounded-lg bg-green-50 border border-green-200 p-3">
+        <div class="text-xs font-semibold text-green-700 mb-2">Fond de caisse (especes en caisse)</div>
+        <div class="flex gap-2">
+          <input type="text" inputmode="decimal" bind:value={cashFloatInput}
+            placeholder="Montant en EUR"
+            class="flex-1 rounded-lg border border-green-200 px-3 py-1.5 text-sm focus:border-green-400 focus:outline-none"
+            onkeydown={(e) => { if (e.key === 'Enter') setCashFloat() }}
+          />
+          <button onclick={setCashFloat}
+            class="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700">
+            OK
+          </button>
+          {#if cashFloat > 0}
+            <button onclick={() => { cashFloat = 0; localStorage.removeItem(`rebond_cash_float_${todayKey}`); showCashFloat = false }}
+              class="rounded-lg bg-gray-100 px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-200" title="Remettre a zero">
+              RAZ
+            </button>
+          {/if}
+        </div>
+        {#if cashFloat > 0}
+          <div class="mt-2 text-xs text-green-600">Actuellement : <span class="font-semibold">{formatPrice(cashFloat)}</span></div>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Global discount form -->
     {#if showGlobalDiscount}
@@ -708,11 +849,21 @@
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
                   <div class="truncate text-sm font-medium text-gray-900">{item.name}</div>
-                  {#if shopStore.hasDepositSale}
-                    <span class="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
-                      {vatLabel(item.vatRegime)}
-                    </span>
-                  {/if}
+                  <div class="flex items-center gap-2 mt-0.5">
+                    {#if shopStore.hasDepositSale}
+                      <span class="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+                        {vatLabel(item.vatRegime)}
+                      </span>
+                    {/if}
+                    <!-- Quantity controls -->
+                    <div class="flex items-center gap-0.5">
+                      <button onclick={() => cart.decrementQuantity(i)}
+                        class="flex h-5 w-5 items-center justify-center rounded bg-gray-100 text-xs font-bold text-gray-600 hover:bg-gray-200 transition-colors">-</button>
+                      <span class="min-w-[1.5rem] text-center text-xs font-semibold text-gray-700">{item.quantity}</span>
+                      <button onclick={() => cart.incrementQuantity(i)}
+                        class="flex h-5 w-5 items-center justify-center rounded bg-gray-100 text-xs font-bold text-gray-600 hover:bg-gray-200 transition-colors">+</button>
+                    </div>
+                  </div>
                 </div>
                 <div class="flex items-center gap-2 pl-3">
                   <!-- Per-item discount button -->
@@ -722,17 +873,20 @@
                     title="Remise"
                   >
                     {#if item.discount}
-                      -{formatPrice(item.discount)}
+                      -{formatPrice(item.discount)}/u
                     {:else}
                       %
                     {/if}
                   </button>
                   <div class="text-right">
                     {#if item.discount}
-                      <span class="text-xs text-gray-400 line-through">{formatPrice(item.price)}</span>
-                      <span class="text-sm font-semibold text-red-600">{formatPrice(item.price - item.discount)}</span>
+                      <span class="text-xs text-gray-400 line-through">{formatPrice(item.price * item.quantity)}</span>
+                      <span class="text-sm font-semibold text-red-600">{formatPrice((item.price - item.discount) * item.quantity)}</span>
                     {:else}
-                      <span class="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</span>
+                      <span class="text-sm font-semibold text-gray-900">
+                        {formatPrice(item.price * item.quantity)}
+                        {#if item.quantity > 1}<span class="text-[10px] text-gray-400 font-normal ml-0.5">({formatPrice(item.price)}/u)</span>{/if}
+                      </span>
                     {/if}
                   </div>
                   <button onclick={() => cart.remove(i)}

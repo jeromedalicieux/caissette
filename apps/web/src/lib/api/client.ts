@@ -236,6 +236,7 @@ export const sales = {
       itemId?: string
       name: string
       price: number
+      quantity?: number
       discount?: number
       type?: string
       costBasis?: number

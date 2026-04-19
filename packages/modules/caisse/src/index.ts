@@ -37,6 +37,7 @@ export const createSaleSchema = z.object({
       type: z.enum(['product', 'service']).default('product'),
       name: z.string(),
       price: z.number().int().positive(),
+      quantity: z.number().int().positive().default(1),
       discount: z.number().int().nonnegative().optional(),
       costBasis: z.number().int().nonnegative().optional(),
       reversementAmount: z.number().int().nonnegative().optional(),
@@ -71,37 +72,48 @@ export function createCaisseRoutes(db: DrizzleD1Database, eventBus: EventBus) {
     const saleId = generateUuidV7() as SaleId
     const now = Date.now()
 
-    // Calculate totals and VAT for each item (after per-item discounts)
+    // Calculate totals and VAT for each item (after per-item discounts, with quantities)
     let subtotal = 0
     let totalVatMargin = 0
     let totalItemDiscounts = 0
-    const processedItems = body.items.map((item) => {
+    const processedItems: Array<{
+      id: string; saleId: string; itemId: string | null; name: string; price: number;
+      costBasis: number | null; reversementAmount: number | null; depositorId: string | null;
+      vatRegime: string; vatRate: number; vatAmount: number;
+    }> = []
+
+    for (const item of body.items) {
+      const qty = item.quantity ?? 1
       const itemDiscount = item.discount ?? 0
-      const effectivePrice = item.price - itemDiscount
-      totalItemDiscounts += itemDiscount
-      subtotal += item.price
-      const vatResult = calculateVatMargin({
-        regime: item.vatRegime,
-        salePriceTtc: effectivePrice,
-        costBasisTtc: item.costBasis,
-        commissionTtc: item.commissionTtc,
-        vatRate: item.vatRate,
-      })
-      totalVatMargin += vatResult.vatAmount
-      return {
-        id: generateUuidV7(),
-        saleId,
-        itemId: item.itemId ?? null,
-        name: item.name,
-        price: effectivePrice,
-        costBasis: item.costBasis ?? null,
-        reversementAmount: item.reversementAmount ?? null,
-        depositorId: item.depositorId ?? null,
-        vatRegime: item.vatRegime,
-        vatRate: item.vatRate,
-        vatAmount: vatResult.vatAmount,
+      const effectiveUnitPrice = item.price - itemDiscount
+      totalItemDiscounts += itemDiscount * qty
+      subtotal += item.price * qty
+
+      // Create one sale_item row per unit (keeps existing structure simple)
+      for (let q = 0; q < qty; q++) {
+        const vatResult = calculateVatMargin({
+          regime: item.vatRegime,
+          salePriceTtc: effectiveUnitPrice,
+          costBasisTtc: item.costBasis,
+          commissionTtc: item.commissionTtc,
+          vatRate: item.vatRate,
+        })
+        totalVatMargin += vatResult.vatAmount
+        processedItems.push({
+          id: generateUuidV7(),
+          saleId,
+          itemId: item.itemId ?? null,
+          name: item.name,
+          price: effectiveUnitPrice,
+          costBasis: item.costBasis ?? null,
+          reversementAmount: item.reversementAmount ?? null,
+          depositorId: item.depositorId ?? null,
+          vatRegime: item.vatRegime,
+          vatRate: item.vatRate,
+          vatAmount: vatResult.vatAmount,
+        })
       }
-    })
+    }
 
     // Global discount
     const globalDiscount = body.discountAmount ?? 0
