@@ -211,8 +211,14 @@ export const policeLedger = {
 // ─── Sales ───
 
 export const sales = {
-  list() {
-    return request<any[]>('/api/sales')
+  list(params?: { start?: string; end?: string; payment?: string; status?: string }) {
+    const qs = new URLSearchParams()
+    if (params?.start) qs.set('start', params.start)
+    if (params?.end) qs.set('end', params.end)
+    if (params?.payment) qs.set('payment', params.payment)
+    if (params?.status) qs.set('status', params.status)
+    const query = qs.toString()
+    return request<any[]>(`/api/sales${query ? '?' + query : ''}`)
   },
 
   get(id: string) {
@@ -238,6 +244,42 @@ export const sales = {
     return request<{ id: string; receiptNumber: number; hash: string }>('/api/sales', {
       method: 'POST',
       body: JSON.stringify(data),
+    })
+  },
+
+  refund(id: string) {
+    return request<{ id: string; receiptNumber: number; hash: string }>(`/api/sales/${id}/refund`, {
+      method: 'POST',
+    })
+  },
+}
+
+// ─── Reversements ───
+
+export const reversementsApi = {
+  list(depositorId?: string) {
+    const qs = depositorId ? `?depositorId=${depositorId}` : ''
+    return request<any[]>(`/api/reversements${qs}`)
+  },
+
+  create(data: { depositorId: string; periodStart: number; periodEnd: number }) {
+    return request<{ id: string; totalSales: number; totalCommission: number; totalReversement: number }>('/api/reversements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  markPaid(id: string, paymentMethod: string) {
+    return request<{ ok: boolean }>(`/api/reversements/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'paid', paymentMethod }),
+    })
+  },
+
+  cancel(id: string) {
+    return request<{ ok: boolean }>(`/api/reversements/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'cancelled' }),
     })
   },
 }
@@ -277,6 +319,19 @@ export const exportApi = {
     a.download = filename
     a.click()
     URL.revokeObjectURL(url)
+  },
+}
+
+// ─── Dashboard ───
+
+export const dashboard = {
+  get() {
+    return request<{
+      today: { ca: number; count: number }
+      month: { ca: number; count: number }
+      topArticles: Array<{ name: string; count: number; revenue: number }>
+      byPayment: Record<string, number>
+    }>('/api/dashboard')
   },
 }
 

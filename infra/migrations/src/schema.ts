@@ -42,7 +42,9 @@ export const users = sqliteTable(
 export const sessions = sqliteTable('sessions', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull(),
+  shopId: text('shop_id').notNull(),
   expiresAt: integer('expires_at').notNull(),
+  createdAt: integer('created_at').notNull(),
 })
 
 // ─── Core: audit_log ───
@@ -225,6 +227,31 @@ export const saleItems = sqliteTable(
   (table) => [
     index('idx_sale_items_sale').on(table.saleId),
     index('idx_sale_items_depositor').on(table.depositorId),
+  ],
+)
+
+// ─── Module: reversements ───
+export const reversements = sqliteTable(
+  'reversements',
+  {
+    id: text('id').primaryKey(),
+    shopId: text('shop_id').notNull(),
+    depositorId: text('depositor_id').notNull(),
+    periodStart: integer('period_start').notNull(),
+    periodEnd: integer('period_end').notNull(),
+    totalSales: integer('total_sales').notNull(),
+    totalCommission: integer('total_commission').notNull(),
+    totalReversement: integer('total_reversement').notNull(),
+    status: text('status').notNull(), // 'pending' | 'paid' | 'cancelled'
+    paymentMethod: text('payment_method'),
+    paidAt: integer('paid_at'),
+    paidBy: text('paid_by'),
+    notes: text('notes'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    index('idx_reversements_shop').on(table.shopId),
+    index('idx_reversements_depositor').on(table.depositorId),
   ],
 )
 

@@ -36,7 +36,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/shared/utils
       dexie:
-        specifier: ^4.0.11
+        specifier: ^4.4.2
         version: 4.4.2
     devDependencies:
       '@sveltejs/adapter-cloudflare':

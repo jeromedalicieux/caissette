@@ -3,6 +3,9 @@
   import { cart, type CartItem } from '$lib/stores/cart.svelte'
   import { authStore } from '$lib/stores/auth.svelte'
   import { shopStore } from '$lib/stores/shop.svelte'
+  import { syncStore } from '$lib/stores/sync.svelte'
+  import { queueOfflineSale } from '$lib/offline/sync'
+  import { printer, printReceipt } from '$lib/printer/escpos'
   import { onMount } from 'svelte'
 
   let availableItems = $state<any[]>([])
@@ -11,7 +14,9 @@
   let error = $state('')
   let success = $state('')
   let processing = $state(false)
+  let printing = $state(false)
   let loading = $state(true)
+  let lastSaleId = $state<string | null>(null)
 
   onMount(loadItems)
 
@@ -99,12 +104,65 @@
       })
 
       success = `Vente #${result.receiptNumber} enregistr\u00E9e -- ${formatPrice(cart.total)}`
+      lastSaleId = result.id
       cart.clear()
       await loadItems()
     } catch (e: any) {
-      error = e.message
+      // If offline, queue the sale for later sync
+      if (!navigator.onLine || e.message?.includes('Failed to fetch') || e.message?.includes('Hors ligne')) {
+        try {
+          const total = cart.items.reduce((sum: number, item: any) => sum + item.price, 0)
+          await queueOfflineSale({
+            tempId: crypto.randomUUID(),
+            cashierId: authStore.user!.id,
+            paymentMethod,
+            items: cart.items.map((item: CartItem) => ({
+              itemId: item.itemId,
+              name: item.name,
+              price: item.price,
+              depositorId: item.depositorId,
+              vatRegime: item.vatRegime,
+              vatRate: item.vatRate,
+              commissionTtc: item.commissionTtc,
+              reversementAmount: item.reversementAmount,
+            })),
+            total,
+          })
+          success = `Vente enregistree hors-ligne (${formatPrice(total)}) — sera synchronisee automatiquement`
+          cart.clear()
+          await syncStore.refreshPendingCount()
+        } catch (offlineErr: any) {
+          error = `Erreur: ${offlineErr.message}`
+        }
+      } else {
+        error = e.message
+      }
     }
     processing = false
+  }
+
+  async function printLastReceipt() {
+    if (!lastSaleId) return
+    printing = true
+    try {
+      const sale = await sales.get(lastSaleId)
+      await printReceipt({
+        shop: sale.shop ?? { name: '', address: '', siret: '' },
+        receiptNumber: sale.receipt_number ?? sale.receiptNumber,
+        date: new Date(sale.sold_at ?? sale.soldAt).toLocaleString('fr-FR'),
+        items: (sale.items ?? []).map((i: any) => ({
+          name: i.name,
+          price: i.price,
+        })),
+        total: sale.total,
+        vatAmount: sale.vat_margin_amount ?? sale.vatMarginAmount,
+        paymentMethod: sale.payment_method ?? sale.paymentMethod,
+        hash: sale.hash,
+      })
+    } catch (e: any) {
+      error = e.message
+    }
+    printing = false
   }
 
   const paymentOptions = [
@@ -202,6 +260,10 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>{success}</span>
+          <button onclick={printLastReceipt} disabled={printing}
+            class="ml-2 text-xs font-medium text-green-800 underline hover:text-green-900">
+            {printing ? 'Impression...' : 'Imprimer'}
+          </button>
         </div>
       {/if}
       {#if error}

@@ -1,18 +1,36 @@
 <script lang="ts">
   import { sales } from '$lib/api/client'
+  import { authStore } from '$lib/stores/auth.svelte'
+  import { printer, printReceipt } from '$lib/printer/escpos'
   import { onMount } from 'svelte'
 
   let list = $state<any[]>([])
   let loading = $state(true)
   let selectedSale = $state<any>(null)
   let loadingDetail = $state(false)
+  let refunding = $state('')
+  let printing = $state(false)
+  let error = $state('')
+  let success = $state('')
 
-  onMount(async () => {
+  // Filters
+  let filterStart = $state('')
+  let filterEnd = $state('')
+  let filterPayment = $state('')
+
+  onMount(loadSales)
+
+  async function loadSales() {
+    loading = true
     try {
-      list = await sales.list()
+      const params: any = {}
+      if (filterStart) params.start = filterStart
+      if (filterEnd) params.end = filterEnd
+      if (filterPayment) params.payment = filterPayment
+      list = await sales.list(params)
     } catch { /* ignore */ }
     loading = false
-  })
+  }
 
   async function viewReceipt(saleId: string) {
     loadingDetail = true
@@ -47,6 +65,49 @@
     resale_item_by_item: 'TVA marge (revente)',
     normal: 'TVA normale',
   }
+
+  async function handleRefund(saleId: string) {
+    if (!confirm('Confirmer le remboursement (avoir) de cette vente ?')) return
+    refunding = saleId
+    error = ''
+    try {
+      const result = await sales.refund(saleId)
+      success = `Avoir #${result.receiptNumber} cree avec succes`
+      await loadSales()
+    } catch (e: any) {
+      error = e.message
+    }
+    refunding = ''
+  }
+
+  async function handlePrint() {
+    if (!selectedSale) return
+    printing = true
+    try {
+      const success = await printReceipt({
+        shop: selectedSale.shop ?? { name: '', address: '', siret: '' },
+        receiptNumber: selectedSale.receipt_number ?? selectedSale.receiptNumber,
+        date: formatDateLong(selectedSale.sold_at ?? selectedSale.soldAt),
+        items: (selectedSale.items ?? []).map((i: any) => ({
+          name: i.name,
+          price: i.price,
+          vatRegime: i.vat_regime ?? i.vatRegime,
+        })),
+        total: selectedSale.total,
+        vatAmount: selectedSale.vat_margin_amount ?? selectedSale.vatMarginAmount,
+        paymentMethod: selectedSale.payment_method ?? selectedSale.paymentMethod,
+        hash: selectedSale.hash,
+      })
+      if (!success) {
+        error = 'Impossible d\'imprimer. Verifiez la connexion imprimante.'
+      }
+    } catch (e: any) {
+      error = e.message
+    }
+    printing = false
+  }
+
+  const isManager = $derived(authStore.user?.role === 'owner' || authStore.user?.role === 'manager')
 </script>
 
 <svelte:head>
@@ -57,6 +118,45 @@
   <div class="mb-6">
     <h1 class="text-2xl font-bold text-gray-900">Historique des ventes</h1>
     <p class="text-sm text-gray-500 mt-1">Toutes les transactions realisees depuis la caisse</p>
+  </div>
+
+  {#if error}
+    <div class="mb-4 rounded-lg bg-red-50 border border-red-100 p-4 text-sm text-red-700">{error}</div>
+  {/if}
+  {#if success}
+    <div class="mb-4 rounded-lg bg-green-50 border border-green-100 p-4 text-sm text-green-700">{success}</div>
+  {/if}
+
+  <!-- Filters -->
+  <div class="mb-6 rounded-xl bg-white p-5 shadow-sm border border-gray-100">
+    <div class="flex flex-wrap items-end gap-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1.5">Date debut</label>
+        <input type="date" bind:value={filterStart}
+          class="block rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1.5">Date fin</label>
+        <input type="date" bind:value={filterEnd}
+          class="block rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-600 mb-1.5">Paiement</label>
+        <select bind:value={filterPayment}
+          class="block rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+          <option value="">Tous</option>
+          <option value="cash">Especes</option>
+          <option value="card">CB</option>
+          <option value="check">Cheque</option>
+          <option value="transfer">Virement</option>
+          <option value="other">Autre</option>
+        </select>
+      </div>
+      <button onclick={loadSales}
+        class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors">
+        Filtrer
+      </button>
+    </div>
   </div>
 
   {#if loading}
@@ -91,10 +191,19 @@
                 </span>
               </td>
               <td class="px-5 py-4">
-                <button onclick={() => viewReceipt(sale.id)}
-                  class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
-                  Ticket
-                </button>
+                <div class="flex gap-3">
+                  <button onclick={() => viewReceipt(sale.id)}
+                    class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
+                    Ticket
+                  </button>
+                  {#if isManager && sale.status === 'completed'}
+                    <button onclick={() => handleRefund(sale.id)}
+                      disabled={refunding === sale.id}
+                      class="text-sm font-medium text-red-600 hover:text-red-700 transition-colors disabled:opacity-50">
+                      {refunding === sale.id ? '...' : 'Rembourser'}
+                    </button>
+                  {/if}
+                </div>
               </td>
             </tr>
           {/each}
@@ -178,8 +287,12 @@
           </div>
         </div>
 
-        <!-- Close button -->
-        <div class="border-t px-6 py-3 flex justify-end">
+        <!-- Actions -->
+        <div class="border-t px-6 py-3 flex justify-end gap-2">
+          <button onclick={handlePrint} disabled={printing}
+            class="rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 transition-colors disabled:opacity-50">
+            {printing ? 'Impression...' : 'Imprimer'}
+          </button>
           <button onclick={() => selectedSale = null}
             class="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors">
             Fermer

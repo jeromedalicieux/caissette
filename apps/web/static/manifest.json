@@ -1,10 +1,12 @@
 {
-  "name": "Rebond — Caisse dépôt-vente",
+  "name": "Rebond Caisse",
   "short_name": "Rebond",
+  "description": "Logiciel de caisse simple et conforme",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f9fafb",
   "theme_color": "#1e40af",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -14,7 +16,8 @@
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
