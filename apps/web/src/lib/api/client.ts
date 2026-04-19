@@ -230,10 +230,14 @@ export const sales = {
   create(data: {
     cashierId: string
     paymentMethod: string
+    payments?: Array<{ method: string; amount: number }>
+    discountAmount?: number
     items: Array<{
       itemId?: string
       name: string
       price: number
+      discount?: number
+      type?: string
       costBasis?: number
       reversementAmount?: number
       depositorId?: string

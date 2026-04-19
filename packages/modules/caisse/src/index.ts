@@ -25,13 +25,19 @@ export interface CartItem {
 
 export const createSaleSchema = z.object({
   cashierId: z.string(),
-  paymentMethod: z.enum(['cash', 'card', 'check', 'transfer', 'other']),
+  paymentMethod: z.enum(['cash', 'card', 'check', 'transfer', 'other', 'multi']),
+  payments: z.array(z.object({
+    method: z.enum(['cash', 'card', 'check', 'transfer', 'other']),
+    amount: z.number().int().positive(),
+  })).optional(),
+  discountAmount: z.number().int().nonnegative().optional(),
   items: z.array(
     z.object({
       itemId: z.string().optional(),
       type: z.enum(['product', 'service']).default('product'),
       name: z.string(),
       price: z.number().int().positive(),
+      discount: z.number().int().nonnegative().optional(),
       costBasis: z.number().int().nonnegative().optional(),
       reversementAmount: z.number().int().nonnegative().optional(),
       depositorId: z.string().optional(),
@@ -65,14 +71,18 @@ export function createCaisseRoutes(db: DrizzleD1Database, eventBus: EventBus) {
     const saleId = generateUuidV7() as SaleId
     const now = Date.now()
 
-    // Calculate totals and VAT for each item
+    // Calculate totals and VAT for each item (after per-item discounts)
     let subtotal = 0
     let totalVatMargin = 0
+    let totalItemDiscounts = 0
     const processedItems = body.items.map((item) => {
+      const itemDiscount = item.discount ?? 0
+      const effectivePrice = item.price - itemDiscount
+      totalItemDiscounts += itemDiscount
       subtotal += item.price
       const vatResult = calculateVatMargin({
         regime: item.vatRegime,
-        salePriceTtc: item.price,
+        salePriceTtc: effectivePrice,
         costBasisTtc: item.costBasis,
         commissionTtc: item.commissionTtc,
         vatRate: item.vatRate,
@@ -83,7 +93,7 @@ export function createCaisseRoutes(db: DrizzleD1Database, eventBus: EventBus) {
         saleId,
         itemId: item.itemId ?? null,
         name: item.name,
-        price: item.price,
+        price: effectivePrice,
         costBasis: item.costBasis ?? null,
         reversementAmount: item.reversementAmount ?? null,
         depositorId: item.depositorId ?? null,
@@ -92,6 +102,10 @@ export function createCaisseRoutes(db: DrizzleD1Database, eventBus: EventBus) {
         vatAmount: vatResult.vatAmount,
       }
     })
+
+    // Global discount
+    const globalDiscount = body.discountAmount ?? 0
+    const totalDiscount = totalItemDiscounts + globalDiscount
 
     // Get previous hash for chaining (ISCA)
     const lastSale = await db
@@ -113,12 +127,23 @@ export function createCaisseRoutes(db: DrizzleD1Database, eventBus: EventBus) {
 
     const receiptNumber = (lastReceipt[0]?.receiptNumber ?? 0) + 1
 
+    const finalTotal = subtotal - (totalItemDiscounts + globalDiscount)
     const hash = await computeChainedHash(
       previousHash,
-      { total: subtotal, items: processedItems.length },
+      { total: finalTotal, items: processedItems.length },
       receiptNumber,
       now,
     )
+
+    // Build payment details JSON
+    const total = subtotal - totalDiscount
+    let paymentDetails: Record<string, any> | null = null
+    if (body.payments && body.payments.length > 0) {
+      paymentDetails = { ...(paymentDetails ?? {}), payments: body.payments }
+    }
+    if (totalDiscount > 0) {
+      paymentDetails = { ...(paymentDetails ?? {}), discountAmount: totalDiscount }
+    }
 
     // Insert sale
     await db.insert(sales).values({
@@ -128,10 +153,10 @@ export function createCaisseRoutes(db: DrizzleD1Database, eventBus: EventBus) {
       cashierId: body.cashierId,
       soldAt: now,
       subtotal,
-      total: subtotal,
+      total,
       vatMarginAmount: totalVatMargin,
       paymentMethod: body.paymentMethod,
-      paymentDetailsJson: null,
+      paymentDetailsJson: paymentDetails ? JSON.stringify(paymentDetails) : null,
       customerNote: body.customerNote ?? null,
       status: 'completed',
       previousHash,
@@ -148,7 +173,7 @@ export function createCaisseRoutes(db: DrizzleD1Database, eventBus: EventBus) {
     // Emit events
     await eventBus.emit('sale.completed', {
       saleId,
-      total: subtotal as Cents,
+      total: total as Cents,
       vatMarginAmount: totalVatMargin as Cents,
       hash,
     })

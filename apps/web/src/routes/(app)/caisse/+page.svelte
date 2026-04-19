@@ -1,6 +1,6 @@
 <script lang="ts">
   import { items, sales } from '$lib/api/client'
-  import { cart, type CartItem } from '$lib/stores/cart.svelte'
+  import { cart, type CartItem, type PaymentSplit } from '$lib/stores/cart.svelte'
   import { authStore } from '$lib/stores/auth.svelte'
   import { shopStore } from '$lib/stores/shop.svelte'
   import { syncStore } from '$lib/stores/sync.svelte'
@@ -12,7 +12,7 @@
 
   let availableItems = $state<any[]>([])
   let search = $state('')
-  let paymentMethod = $state('cash')
+  let paymentMethod = $state<string>('cash')
   let error = $state('')
   let success = $state('')
   let processing = $state(false)
@@ -32,11 +32,39 @@
   let usageCount = $state<Record<string, number>>({})
   // Sort mode
   let sortMode = $state<'default' | 'popular' | 'favorites'>(shopStore.display.posDefaultSort)
-  // View mode: grid (default cards), list (compact rows), tiles (large touch-friendly)
+  // View mode
   let viewMode = $state<'grid' | 'list' | 'tiles'>('grid')
+  // Category filter
+  let selectedCategory = $state<string>('')
+  // Discount UI
+  let discountItemIndex = $state<number>(-1)
+  let discountInput = $state('')
+  let discountType = $state<'percent' | 'fixed'>('percent')
+  let showGlobalDiscount = $state(false)
+  let globalDiscountInput = $state('')
+  let globalDiscountType = $state<'percent' | 'fixed'>('percent')
+  // Multi-payment
+  let useMultiPayment = $state(false)
+  let payments = $state<PaymentSplit[]>([])
+  let multiPaymentInput = $state('')
+  let multiPaymentMethod = $state<string>('cash')
+  // Change calculator
+  let showChangeModal = $state(false)
+  let cashGiven = $state('')
+  let changeAmount = $derived(
+    cashGiven ? Math.round(parseFloat(cashGiven) * 100) - cart.total : 0
+  )
+
+  // Extract unique categories
+  let categories = $derived(() => {
+    const cats = new Set<string>()
+    for (const item of availableItems) {
+      if (item.category) cats.add(item.category)
+    }
+    return [...cats].sort()
+  })
 
   onMount(() => {
-    // Load favorites & usage from localStorage
     try {
       const fav = localStorage.getItem('rebond_favorites')
       if (fav) favorites = new Set(JSON.parse(fav))
@@ -59,7 +87,7 @@
     } else {
       favorites.add(itemId)
     }
-    favorites = new Set(favorites) // trigger reactivity
+    favorites = new Set(favorites)
     saveFavorites()
   }
 
@@ -74,11 +102,9 @@
     usingCache = false
     try {
       availableItems = await items.list('available')
-      // Refresh cache in background
       refreshItemsCache()
       localStorage.setItem('rebond_cache_refresh', String(Date.now()))
     } catch (e: any) {
-      // Offline — try local cache
       try {
         const cached = await getCachedItems()
         if (cached.length > 0) {
@@ -96,6 +122,12 @@
 
   function filteredItems() {
     let result = availableItems
+
+    // Category filter
+    if (selectedCategory) {
+      result = result.filter((i: any) => i.category === selectedCategory)
+    }
+
     if (search) {
       const q = search.toLowerCase()
       result = result.filter(
@@ -106,12 +138,9 @@
       )
     }
 
-    // Sort
     if (sortMode === 'favorites') {
       result = [...result].sort((a, b) => {
-        const aFav = favorites.has(a.id) ? 1 : 0
-        const bFav = favorites.has(b.id) ? 1 : 0
-        return bFav - aFav
+        return (favorites.has(b.id) ? 1 : 0) - (favorites.has(a.id) ? 1 : 0)
       })
     } else if (sortMode === 'popular') {
       result = [...result].sort((a, b) => {
@@ -145,7 +174,7 @@
     let vatRegimeValue = item.vat_regime ?? item.vatRegime ?? 'normal'
 
     if (shopStore.hasDepositSale && depositorId) {
-      const commissionRate = 4000 // 40% default, TODO: from depositor/contract
+      const commissionRate = 4000
       commissionTtc = Math.round(price * commissionRate / 10000)
       reversementAmount = price - commissionTtc
       vatRegimeValue = item.vat_regime ?? item.vatRegime ?? 'deposit'
@@ -166,7 +195,6 @@
       reversementAmount,
     })
 
-    // Remove from available list (services stay available — infinite stock)
     if (!isService) {
       availableItems = availableItems.filter((i: any) => i.id !== item.id)
       markItemSoldLocally(item.id)
@@ -179,25 +207,85 @@
   }
 
   function vatLabel(regime: string) {
-    if (regime === 'deposit') return 'D\u00E9p\u00F4t'
+    if (regime === 'deposit') return 'Depot'
     if (regime === 'normal') return 'TVA normale'
     return 'Marge'
   }
 
+  // --- Discount functions ---
+  function applyItemDiscount(index: number) {
+    const val = parseFloat(discountInput.replace(',', '.'))
+    if (isNaN(val) || val <= 0) { discountItemIndex = -1; return }
+    const item = cart.items[index]
+    if (!item) { discountItemIndex = -1; return }
+    if (discountType === 'percent') {
+      cart.setItemDiscount(index, Math.round(item.price * Math.min(val, 100) / 100))
+    } else {
+      cart.setItemDiscount(index, Math.round(Math.min(val, item.price / 100) * 100))
+    }
+    discountItemIndex = -1
+    discountInput = ''
+  }
+
+  function applyGlobalDiscount() {
+    const val = parseFloat(globalDiscountInput.replace(',', '.'))
+    if (isNaN(val) || val <= 0) { showGlobalDiscount = false; return }
+    if (globalDiscountType === 'percent') {
+      cart.setGlobalDiscountPercent(Math.min(val, 100))
+    } else {
+      cart.setGlobalDiscountFixed(Math.round(val * 100))
+    }
+    showGlobalDiscount = false
+    globalDiscountInput = ''
+  }
+
+  // --- Multi-payment functions ---
+  function addPaymentSplit() {
+    const amount = Math.round(parseFloat(multiPaymentInput.replace(',', '.')) * 100)
+    if (isNaN(amount) || amount <= 0) return
+    payments = [...payments, { method: multiPaymentMethod as any, amount }]
+    multiPaymentInput = ''
+  }
+
+  function removePaymentSplit(index: number) {
+    payments = payments.filter((_, i) => i !== index)
+  }
+
+  let multiPaymentRemaining = $derived(
+    cart.total - payments.reduce((sum, p) => sum + p.amount, 0)
+  )
+
+  // --- Payment ---
   async function handlePayment() {
     if (cart.count === 0) return
     error = ''
     success = ''
     processing = true
 
+    // Determine payment method and splits
+    let finalPaymentMethod = paymentMethod
+    let paymentSplits: PaymentSplit[] | undefined
+    if (useMultiPayment && payments.length > 0) {
+      finalPaymentMethod = 'multi'
+      // Add remaining to last method if any
+      if (multiPaymentRemaining > 0) {
+        paymentSplits = [...payments, { method: multiPaymentMethod as any, amount: multiPaymentRemaining }]
+      } else {
+        paymentSplits = payments
+      }
+    }
+
     try {
       const result = await sales.create({
         cashierId: authStore.user!.id,
-        paymentMethod,
+        paymentMethod: finalPaymentMethod,
+        payments: paymentSplits,
+        discountAmount: cart.globalDiscountAmount,
         items: cart.items.map((item: CartItem) => ({
           itemId: item.itemId,
           name: item.name,
           price: item.price,
+          discount: item.discount ?? 0,
           type: item.type ?? 'product',
           depositorId: item.depositorId,
           vatRegime: item.vatRegime,
@@ -207,23 +295,32 @@
         })),
       })
 
-      success = `Vente #${result.receiptNumber} enregistr\u00E9e -- ${formatPrice(cart.total)}`
+      const totalPaid = cart.total
+      success = `Vente #${result.receiptNumber} enregistree -- ${formatPrice(totalPaid)}`
       lastSaleId = result.id
+
+      // Show change modal for cash payments
+      if (paymentMethod === 'cash' && !useMultiPayment) {
+        showChangeModal = true
+        cashGiven = ''
+      }
+
       cart.clear()
+      payments = []
+      useMultiPayment = false
       await loadItems()
     } catch (e: any) {
-      // If offline, queue the sale for later sync
       if (!navigator.onLine || e.message?.includes('Failed to fetch') || e.message?.includes('Hors ligne')) {
         try {
-          const total = cart.items.reduce((sum: number, item: any) => sum + item.price, 0)
+          const total = cart.total
           await queueOfflineSale({
             tempId: crypto.randomUUID(),
             cashierId: authStore.user!.id,
-            paymentMethod,
+            paymentMethod: finalPaymentMethod,
             items: cart.items.map((item: CartItem) => ({
               itemId: item.itemId,
               name: item.name,
-              price: item.price,
+              price: item.price - (item.discount ?? 0),
               type: item.type ?? 'product',
               depositorId: item.depositorId,
               vatRegime: item.vatRegime,
@@ -235,6 +332,8 @@
           })
           success = `Vente enregistree hors-ligne (${formatPrice(total)}) — sera synchronisee automatiquement`
           cart.clear()
+          payments = []
+          useMultiPayment = false
           await syncStore.refreshPendingCount()
         } catch (offlineErr: any) {
           error = `Erreur: ${offlineErr.message}`
@@ -255,10 +354,7 @@
         shop: sale.shop ?? { name: '', address: '', siret: '' },
         receiptNumber: sale.receipt_number ?? sale.receiptNumber,
         date: new Date(sale.sold_at ?? sale.soldAt).toLocaleString('fr-FR'),
-        items: (sale.items ?? []).map((i: any) => ({
-          name: i.name,
-          price: i.price,
-        })),
+        items: (sale.items ?? []).map((i: any) => ({ name: i.name, price: i.price })),
         total: sale.total,
         vatAmount: sale.vat_margin_amount ?? sale.vatMarginAmount,
         paymentMethod: sale.payment_method ?? sale.paymentMethod,
@@ -271,11 +367,15 @@
   }
 
   const paymentOptions = [
-    { v: 'cash', l: 'Esp\u00E8ces' },
+    { v: 'cash', l: 'Especes' },
     { v: 'card', l: 'Carte' },
-    { v: 'check', l: 'Ch\u00E8que' },
+    { v: 'check', l: 'Cheque' },
     { v: 'other', l: 'Autre' },
   ]
+
+  const methodLabels: Record<string, string> = {
+    cash: 'Especes', card: 'Carte', check: 'Cheque', transfer: 'Virement', other: 'Autre',
+  }
 </script>
 
 <svelte:head>
@@ -290,8 +390,8 @@
       <div class="flex items-center gap-2 mb-2">
         <SectionGuide
           title="Ecran de caisse"
-          description="Cliquez sur un article a gauche pour l'ajouter au panier. Choisissez le moyen de paiement, puis appuyez sur Encaisser."
-          tips={['Utilisez \"Montant libre\" pour encaisser sans article', 'Cliquez l\'etoile pour mettre un article en favori', 'Triez par popularite pour voir les plus vendus en premier', 'En cas de coupure internet, la vente est sauvegardee hors-ligne']}
+          description="Cliquez sur un article pour l'ajouter au panier. Appliquez des remises, choisissez le paiement, puis encaissez."
+          tips={['Appliquez une remise par article ou globale depuis le panier', 'Multi-paiement : payez une partie en carte, le reste en especes', 'Filtrez par categorie avec les onglets', 'Le rendu monnaie s\'affiche apres un paiement en especes']}
         />
       </div>
       {#if usingCache}
@@ -324,6 +424,24 @@
         </button>
       </div>
 
+      <!-- Category tabs -->
+      {#if categories().length > 0}
+        <div class="mt-2 flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
+          <button onclick={() => selectedCategory = ''}
+            class="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors
+              {selectedCategory === '' ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
+            Toutes
+          </button>
+          {#each categories() as cat}
+            <button onclick={() => selectedCategory = cat}
+              class="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition-colors
+                {selectedCategory === cat ? 'bg-blue-600 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
+              {cat}
+            </button>
+          {/each}
+        </div>
+      {/if}
+
       <!-- Sort + View mode buttons -->
       <div class="mt-2 flex items-center justify-between">
         <div class="flex gap-1.5">
@@ -343,7 +461,6 @@
             Populaires
           </button>
         </div>
-        <!-- View mode switcher -->
         <div class="flex rounded-lg bg-white ring-1 ring-gray-200 overflow-hidden">
           <button
             onclick={() => { viewMode = 'grid'; localStorage.setItem('rebond_view_mode', 'grid') }}
@@ -378,25 +495,12 @@
       <!-- Quick add form -->
       {#if showQuickAdd}
         <div class="mt-2 flex gap-2 rounded-xl bg-white p-3 shadow-sm ring-1 ring-gray-200">
-          <input
-            type="text"
-            bind:value={quickName}
-            placeholder="Libelle (ex: Reparation)"
-            class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
-          />
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            bind:value={quickPrice}
-            placeholder="Prix EUR"
-            class="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
-          />
-          <button
-            onclick={addQuickItem}
-            disabled={!quickName || !quickPrice}
-            class="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
-          >
+          <input type="text" bind:value={quickName} placeholder="Libelle (ex: Reparation)"
+            class="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+          <input type="number" step="0.01" min="0" bind:value={quickPrice} placeholder="Prix EUR"
+            class="w-28 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+          <button onclick={addQuickItem} disabled={!quickName || !quickPrice}
+            class="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40 transition-colors">
             Ajouter
           </button>
         </div>
@@ -406,7 +510,6 @@
     <!-- Product grid -->
     <div class="flex-1 overflow-auto p-4 pt-2">
       {#if loading}
-        <!-- Loading skeleton -->
         <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {#each Array(6) as _}
             <div class="animate-pulse rounded-xl bg-white p-4 shadow-sm">
@@ -417,121 +520,75 @@
           {/each}
         </div>
       {:else if filteredItems().length === 0}
-        <!-- Empty state -->
         <div class="flex flex-col items-center justify-center py-16 text-gray-400">
           <svg class="mb-3 h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 11.625l2.25-2.25M12 11.625l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
           </svg>
-          <p class="text-sm font-medium">Aucun article en vente</p>
-          <p class="mt-1 text-xs text-gray-400">Ajoutez des articles depuis la page Articles pour les voir ici</p>
+          <p class="text-sm font-medium">Aucun article {selectedCategory ? `dans "${selectedCategory}"` : 'en vente'}</p>
+          <p class="mt-1 text-xs text-gray-400">Ajoutez des articles depuis la page Articles</p>
         </div>
       {:else if viewMode === 'list'}
-        <!-- LIST VIEW: compact rows -->
+        <!-- LIST VIEW -->
         <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 overflow-hidden">
           {#each filteredItems() as item, idx}
             <div
               class="flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors hover:bg-blue-50 {idx > 0 ? 'border-t border-gray-100' : ''} {item.type === 'service' ? 'bg-purple-50/30' : ''}"
-              onclick={() => addToCart(item)}
-              onkeydown={(e) => { if (e.key === 'Enter') addToCart(item) }}
-              role="button"
-              tabindex="0"
+              onclick={() => addToCart(item)} onkeydown={(e) => { if (e.key === 'Enter') addToCart(item) }} role="button" tabindex="0"
             >
-              <!-- Favorite star -->
-              <button
-                onclick={(e) => toggleFavorite(e, item.id)}
-                class="shrink-0 p-0.5 transition-colors {favorites.has(item.id) ? 'text-amber-400' : 'text-gray-200 hover:text-amber-300'}"
-                aria-label="Favori"
-              >
-                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clip-rule="evenodd" />
-                </svg>
+              <button onclick={(e) => toggleFavorite(e, item.id)}
+                class="shrink-0 p-0.5 transition-colors {favorites.has(item.id) ? 'text-amber-400' : 'text-gray-200 hover:text-amber-300'}" aria-label="Favori">
+                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clip-rule="evenodd" /></svg>
               </button>
               <span class="flex-1 truncate text-sm font-medium text-gray-900">{item.name}</span>
               {#if item.type === 'service'}
                 <span class="shrink-0 rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-purple-700">Service</span>
               {/if}
-              {#if shopStore.display.showCategories && item.category}
+              {#if item.category}
                 <span class="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">{item.category}</span>
-              {/if}
-              {#if shopStore.display.posShowSku && item.sku}
-                <span class="shrink-0 text-xs text-gray-400">{item.sku}</span>
-              {/if}
-              {#if shopStore.display.posShowUsageCount && usageCount[item.id]}
-                <span class="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[10px] font-medium text-gray-500">{usageCount[item.id]}x</span>
               {/if}
               <span class="shrink-0 text-sm font-bold text-blue-600">{formatPrice(item.current_price ?? item.currentPrice)}</span>
             </div>
           {/each}
         </div>
       {:else if viewMode === 'tiles'}
-        <!-- TILES VIEW: large touch-friendly cards -->
+        <!-- TILES VIEW -->
         <div class="grid grid-cols-2 gap-4">
           {#each filteredItems() as item}
             <div
               class="group relative rounded-2xl bg-white text-left shadow-sm transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer p-5 {item.type === 'service' ? 'ring-2 ring-purple-200' : ''} {favorites.has(item.id) ? 'ring-2 ring-amber-300' : ''}"
-              onclick={() => addToCart(item)}
-              onkeydown={(e) => { if (e.key === 'Enter') addToCart(item) }}
-              role="button"
-              tabindex="0"
+              onclick={() => addToCart(item)} onkeydown={(e) => { if (e.key === 'Enter') addToCart(item) }} role="button" tabindex="0"
             >
-              <!-- Favorite star -->
-              <button
-                onclick={(e) => toggleFavorite(e, item.id)}
-                class="absolute top-3 right-3 p-1.5 rounded-full transition-colors
-                  {favorites.has(item.id) ? 'text-amber-400 hover:text-amber-500' : 'text-gray-200 hover:text-amber-300'}"
-                aria-label="Favori"
-              >
-                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clip-rule="evenodd" />
-                </svg>
+              <button onclick={(e) => toggleFavorite(e, item.id)}
+                class="absolute top-3 right-3 p-1.5 rounded-full transition-colors {favorites.has(item.id) ? 'text-amber-400 hover:text-amber-500' : 'text-gray-200 hover:text-amber-300'}" aria-label="Favori">
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clip-rule="evenodd" /></svg>
               </button>
-
               {#if item.type === 'service'}
                 <span class="mb-2 inline-block rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold uppercase text-purple-700">Service</span>
               {/if}
               <div class="pr-8">
                 <h3 class="text-base font-semibold text-gray-900 leading-tight">{item.name}</h3>
               </div>
-              {#if shopStore.display.showCategories && item.category}
+              {#if item.category}
                 <span class="mt-2 inline-block rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">{item.category}</span>
               {/if}
               <div class="mt-3 flex items-end justify-between">
-                <div class="flex items-center gap-2">
-                  {#if shopStore.display.posShowSku && item.sku}
-                    <span class="text-xs text-gray-400">{item.sku}</span>
-                  {/if}
-                  {#if shopStore.display.posShowUsageCount && usageCount[item.id]}
-                    <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-500">{usageCount[item.id]}x</span>
-                  {/if}
-                </div>
                 <span class="text-2xl font-bold text-blue-600">{formatPrice(item.current_price ?? item.currentPrice)}</span>
               </div>
             </div>
           {/each}
         </div>
       {:else}
-        <!-- GRID VIEW: default cards -->
+        <!-- GRID VIEW -->
         <div class="grid gap-3 {shopStore.display.posColumns === 2 ? 'grid-cols-2' : shopStore.display.posColumns === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-3'}">
           {#each filteredItems() as item}
             <div
               class="group relative rounded-xl bg-white text-left shadow-sm transition-shadow hover:shadow-md cursor-pointer {shopStore.display.posCompactCards ? 'p-3' : 'p-4'} {item.type === 'service' ? 'ring-1 ring-purple-200' : ''} {favorites.has(item.id) ? 'ring-1 ring-amber-300' : ''}"
-              onclick={() => addToCart(item)}
-              onkeydown={(e) => { if (e.key === 'Enter') addToCart(item) }}
-              role="button"
-              tabindex="0"
+              onclick={() => addToCart(item)} onkeydown={(e) => { if (e.key === 'Enter') addToCart(item) }} role="button" tabindex="0"
             >
-              <!-- Favorite star -->
-              <button
-                onclick={(e) => toggleFavorite(e, item.id)}
-                class="absolute top-2 right-2 p-1 rounded-full transition-colors
-                  {favorites.has(item.id) ? 'text-amber-400 hover:text-amber-500' : 'text-gray-200 hover:text-amber-300'}"
-                aria-label={favorites.has(item.id) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-              >
-                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clip-rule="evenodd" />
-                </svg>
+              <button onclick={(e) => toggleFavorite(e, item.id)}
+                class="absolute top-2 right-2 p-1 rounded-full transition-colors {favorites.has(item.id) ? 'text-amber-400 hover:text-amber-500' : 'text-gray-200 hover:text-amber-300'}" aria-label="Favori">
+                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clip-rule="evenodd" /></svg>
               </button>
-
               <div class="flex items-center gap-1.5 pr-6">
                 <span class="truncate text-sm font-medium text-gray-900">{item.name}</span>
                 {#if item.type === 'service'}
@@ -562,12 +619,27 @@
   <!-- Right panel: Cart + Payment -->
   <div class="flex w-full flex-col border-t bg-white md:w-[400px] md:border-l md:border-t-0 lg:w-[440px]">
     <!-- Cart header -->
-    <div class="flex items-center gap-2 border-b px-5 py-4">
-      <h2 class="text-lg font-bold text-gray-900">Panier</h2>
+    <div class="flex items-center justify-between border-b px-5 py-4">
+      <div class="flex items-center gap-2">
+        <h2 class="text-lg font-bold text-gray-900">Panier</h2>
+        {#if cart.count > 0}
+          <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-semibold text-blue-700">
+            {cart.count}
+          </span>
+        {/if}
+      </div>
       {#if cart.count > 0}
-        <span class="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-blue-100 px-2 text-xs font-semibold text-blue-700">
-          {cart.count}
-        </span>
+        <button
+          onclick={() => showGlobalDiscount = !showGlobalDiscount}
+          class="text-xs font-medium transition-colors {cart.totalDiscount > 0 ? 'text-red-600' : 'text-gray-400 hover:text-blue-600'}"
+          title="Remise globale"
+        >
+          {#if cart.totalDiscount > 0}
+            -{formatPrice(cart.totalDiscount)}
+          {:else}
+            % Remise
+          {/if}
+        </button>
       {/if}
     </div>
 
@@ -595,6 +667,36 @@
       {/if}
     </div>
 
+    <!-- Global discount form -->
+    {#if showGlobalDiscount}
+      <div class="mx-5 mt-3 rounded-lg bg-red-50 border border-red-200 p-3">
+        <div class="text-xs font-semibold text-red-700 mb-2">Remise globale</div>
+        <div class="flex gap-2">
+          <div class="flex rounded-lg overflow-hidden ring-1 ring-red-200">
+            <button onclick={() => globalDiscountType = 'percent'}
+              class="px-2 py-1.5 text-xs font-medium {globalDiscountType === 'percent' ? 'bg-red-600 text-white' : 'bg-white text-red-600'}">%</button>
+            <button onclick={() => globalDiscountType = 'fixed'}
+              class="px-2 py-1.5 text-xs font-medium {globalDiscountType === 'fixed' ? 'bg-red-600 text-white' : 'bg-white text-red-600'}">EUR</button>
+          </div>
+          <input type="text" inputmode="decimal" bind:value={globalDiscountInput}
+            placeholder={globalDiscountType === 'percent' ? 'Ex: 10' : 'Ex: 5,00'}
+            class="flex-1 rounded-lg border border-red-200 px-3 py-1.5 text-sm focus:border-red-400 focus:outline-none"
+            onkeydown={(e) => { if (e.key === 'Enter') applyGlobalDiscount() }}
+          />
+          <button onclick={applyGlobalDiscount}
+            class="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700">
+            OK
+          </button>
+          {#if cart.globalDiscountPercent > 0 || cart.globalDiscountFixed > 0}
+            <button onclick={() => cart.clearGlobalDiscount()}
+              class="rounded-lg bg-gray-100 px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-200" title="Annuler">
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          {/if}
+        </div>
+      </div>
+    {/if}
+
     <!-- Cart items -->
     <div class="flex-1 overflow-auto px-5 py-4">
       {#if cart.count === 0}
@@ -602,27 +704,68 @@
       {:else}
         <ul class="space-y-1">
           {#each cart.items as item, i}
-            <li class="flex items-center justify-between py-2">
-              <div class="min-w-0 flex-1">
-                <div class="truncate text-sm font-medium text-gray-900">{item.name}</div>
-                {#if shopStore.hasDepositSale}
-                  <span class="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
-                    {vatLabel(item.vatRegime)}
-                  </span>
-                {/if}
+            <li class="py-2">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <div class="truncate text-sm font-medium text-gray-900">{item.name}</div>
+                  {#if shopStore.hasDepositSale}
+                    <span class="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+                      {vatLabel(item.vatRegime)}
+                    </span>
+                  {/if}
+                </div>
+                <div class="flex items-center gap-2 pl-3">
+                  <!-- Per-item discount button -->
+                  <button
+                    onclick={() => { discountItemIndex = discountItemIndex === i ? -1 : i; discountInput = '' }}
+                    class="text-[10px] font-medium transition-colors {item.discount ? 'text-red-500' : 'text-gray-300 hover:text-red-400'}"
+                    title="Remise"
+                  >
+                    {#if item.discount}
+                      -{formatPrice(item.discount)}
+                    {:else}
+                      %
+                    {/if}
+                  </button>
+                  <div class="text-right">
+                    {#if item.discount}
+                      <span class="text-xs text-gray-400 line-through">{formatPrice(item.price)}</span>
+                      <span class="text-sm font-semibold text-red-600">{formatPrice(item.price - item.discount)}</span>
+                    {:else}
+                      <span class="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</span>
+                    {/if}
+                  </div>
+                  <button onclick={() => cart.remove(i)}
+                    class="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                    aria-label="Retirer">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <div class="flex items-center gap-3 pl-3">
-                <span class="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</span>
-                <button
-                  onclick={() => cart.remove(i)}
-                  class="flex h-6 w-6 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
-                  aria-label="Retirer {item.name} du panier"
-                >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+              <!-- Inline discount input -->
+              {#if discountItemIndex === i}
+                <div class="mt-1.5 flex gap-1.5">
+                  <div class="flex rounded-lg overflow-hidden ring-1 ring-gray-200">
+                    <button onclick={() => discountType = 'percent'}
+                      class="px-2 py-1 text-[10px] font-medium {discountType === 'percent' ? 'bg-red-600 text-white' : 'bg-white text-gray-500'}">%</button>
+                    <button onclick={() => discountType = 'fixed'}
+                      class="px-2 py-1 text-[10px] font-medium {discountType === 'fixed' ? 'bg-red-600 text-white' : 'bg-white text-gray-500'}">EUR</button>
+                  </div>
+                  <input type="text" inputmode="decimal" bind:value={discountInput}
+                    placeholder={discountType === 'percent' ? '10' : '5,00'}
+                    class="w-20 rounded-lg border border-gray-200 px-2 py-1 text-xs focus:border-red-400 focus:outline-none"
+                    onkeydown={(e) => { if (e.key === 'Enter') applyItemDiscount(i) }}
+                  />
+                  <button onclick={() => applyItemDiscount(i)}
+                    class="rounded-lg bg-red-600 px-2 py-1 text-[10px] font-medium text-white hover:bg-red-700">OK</button>
+                  {#if item.discount}
+                    <button onclick={() => { cart.setItemDiscount(i, 0); discountItemIndex = -1 }}
+                      class="text-[10px] text-gray-400 hover:text-gray-600">Annuler</button>
+                  {/if}
+                </div>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -631,29 +774,90 @@
 
     <!-- Payment footer -->
     <div class="border-t px-5 py-4">
-      <!-- Total -->
+      <!-- Totals -->
+      {#if cart.totalDiscount > 0}
+        <div class="mb-1 flex items-baseline justify-between">
+          <span class="text-xs text-gray-400">Sous-total</span>
+          <span class="text-sm text-gray-400">{formatPrice(cart.subtotal)}</span>
+        </div>
+        <div class="mb-1 flex items-baseline justify-between">
+          <span class="text-xs text-red-500">Remise</span>
+          <span class="text-sm font-medium text-red-500">-{formatPrice(cart.totalDiscount)}</span>
+        </div>
+      {/if}
       <div class="mb-4 flex items-baseline justify-between">
         <span class="text-sm font-medium text-gray-500">Total TTC</span>
         <span class="text-2xl font-bold text-gray-900">{formatPrice(cart.total)}</span>
       </div>
 
-      <!-- Divider -->
       <hr class="mb-4 border-gray-100" />
 
       <!-- Payment method -->
-      <div class="mb-4 grid grid-cols-2 gap-2">
-        {#each paymentOptions as opt}
-          <button
-            onclick={() => paymentMethod = opt.v}
-            class="rounded-lg border px-3 py-2 text-sm font-medium transition-colors
-              {paymentMethod === opt.v
-                ? 'border-blue-500 bg-blue-600 text-white'
-                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'}"
-          >
-            {opt.l}
-          </button>
-        {/each}
+      {#if !useMultiPayment}
+        <div class="mb-3 grid grid-cols-2 gap-2">
+          {#each paymentOptions as opt}
+            <button
+              onclick={() => paymentMethod = opt.v}
+              class="rounded-lg border px-3 py-2 text-sm font-medium transition-colors
+                {paymentMethod === opt.v
+                  ? 'border-blue-500 bg-blue-600 text-white'
+                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'}"
+            >
+              {opt.l}
+            </button>
+          {/each}
+        </div>
+      {/if}
+
+      <!-- Multi-payment toggle -->
+      <div class="mb-3">
+        <button
+          onclick={() => { useMultiPayment = !useMultiPayment; payments = [] }}
+          class="text-xs font-medium transition-colors {useMultiPayment ? 'text-blue-600' : 'text-gray-400 hover:text-blue-500'}"
+        >
+          {useMultiPayment ? 'Annuler multi-paiement' : 'Multi-paiement'}
+        </button>
       </div>
+
+      <!-- Multi-payment splits -->
+      {#if useMultiPayment}
+        <div class="mb-3 space-y-2">
+          {#each payments as payment, idx}
+            <div class="flex items-center justify-between rounded-lg bg-blue-50 px-3 py-2 text-sm">
+              <span class="font-medium text-blue-800">{methodLabels[payment.method]}</span>
+              <div class="flex items-center gap-2">
+                <span class="font-semibold text-blue-900">{formatPrice(payment.amount)}</span>
+                <button onclick={() => removePaymentSplit(idx)} class="text-blue-400 hover:text-red-500">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+            </div>
+          {/each}
+
+          {#if multiPaymentRemaining > 0}
+            <div class="flex gap-2">
+              <select bind:value={multiPaymentMethod}
+                class="rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none">
+                {#each paymentOptions as opt}
+                  <option value={opt.v}>{opt.l}</option>
+                {/each}
+              </select>
+              <input type="text" inputmode="decimal" bind:value={multiPaymentInput}
+                placeholder={`Max ${(multiPaymentRemaining / 100).toFixed(2)}`}
+                class="flex-1 rounded-lg border border-gray-200 px-3 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+                onkeydown={(e) => { if (e.key === 'Enter') addPaymentSplit() }}
+              />
+              <button onclick={addPaymentSplit}
+                class="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700">+</button>
+            </div>
+            <div class="text-xs text-gray-500">
+              Reste a repartir : <span class="font-semibold">{formatPrice(multiPaymentRemaining)}</span>
+            </div>
+          {:else}
+            <div class="text-xs font-medium text-green-600">Montant entierement reparti</div>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Submit -->
       <button
@@ -666,3 +870,57 @@
     </div>
   </div>
 </div>
+
+<!-- Change calculator modal -->
+{#if showChangeModal}
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onclick={() => showChangeModal = false}>
+    <div class="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl" onclick={(e) => e.stopPropagation()}>
+      <h2 class="text-lg font-bold text-gray-900 mb-1">Rendu monnaie</h2>
+      <p class="text-sm text-gray-500 mb-4">{success}</p>
+
+      <div class="mb-4">
+        <label for="cash-given" class="block text-sm font-medium text-gray-700 mb-1">Montant donne par le client</label>
+        <div class="relative">
+          <input
+            type="text"
+            inputmode="decimal"
+            id="cash-given"
+            bind:value={cashGiven}
+            placeholder="0,00"
+            class="w-full rounded-xl border border-gray-300 px-4 py-3 text-2xl font-bold text-center focus:border-green-500 focus:ring-2 focus:ring-green-500/20 focus:outline-none"
+          />
+          <span class="absolute right-4 top-1/2 -translate-y-1/2 text-lg text-gray-400">EUR</span>
+        </div>
+      </div>
+
+      {#if cashGiven && changeAmount >= 0}
+        <div class="rounded-xl bg-green-50 border border-green-200 p-4 text-center">
+          <div class="text-sm text-green-700 mb-1">A rendre</div>
+          <div class="text-3xl font-bold text-green-800">{formatPrice(changeAmount)}</div>
+        </div>
+      {:else if cashGiven && changeAmount < 0}
+        <div class="rounded-xl bg-red-50 border border-red-200 p-4 text-center">
+          <div class="text-sm text-red-700 mb-1">Montant insuffisant</div>
+          <div class="text-xl font-bold text-red-800">Il manque {formatPrice(Math.abs(changeAmount))}</div>
+        </div>
+      {/if}
+
+      <!-- Quick cash buttons -->
+      <div class="mt-4 grid grid-cols-4 gap-2">
+        {#each [5, 10, 20, 50] as amount}
+          <button
+            onclick={() => cashGiven = String(amount)}
+            class="rounded-lg border border-gray-200 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            {amount} EUR
+          </button>
+        {/each}
+      </div>
+
+      <button onclick={() => showChangeModal = false}
+        class="mt-4 w-full rounded-xl bg-gray-800 py-2.5 text-sm font-semibold text-white hover:bg-gray-900 transition-colors">
+        Fermer
+      </button>
+    </div>
+  </div>
+{/if}
