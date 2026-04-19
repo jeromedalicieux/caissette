@@ -10,6 +10,71 @@
   let { children } = $props()
   let shopInitialized = $state(false)
 
+  // PWA install prompt
+  let deferredPrompt = $state<any>(null)
+  let showPwaNotice = $state(false)
+  let pwaInstalled = $state(false)
+  let pwaPlatform = $state<'ios' | 'android' | 'desktop' | 'unknown'>('unknown')
+
+  function detectPlatform(): 'ios' | 'android' | 'desktop' | 'unknown' {
+    if (typeof navigator === 'undefined') return 'unknown'
+    const ua = navigator.userAgent
+    if (/iPad|iPhone|iPod/.test(ua)) return 'ios'
+    if (/Android/.test(ua)) return 'android'
+    if (/Mac|Windows|Linux/.test(ua)) return 'desktop'
+    return 'unknown'
+  }
+
+  function isPwaInstalled(): boolean {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia('(display-mode: standalone)').matches
+      || (navigator as any).standalone === true
+  }
+
+  $effect(() => {
+    if (typeof window === 'undefined') return
+    pwaPlatform = detectPlatform()
+    pwaInstalled = isPwaInstalled()
+
+    // Check if user already dismissed
+    const dismissed = localStorage.getItem('rebond_pwa_dismissed')
+    if (!pwaInstalled && !dismissed) {
+      showPwaNotice = true
+    }
+
+    // Listen for beforeinstallprompt (Chrome/Edge/Samsung)
+    const handler = (e: Event) => {
+      e.preventDefault()
+      deferredPrompt = e
+    }
+    window.addEventListener('beforeinstallprompt', handler)
+
+    // Detect when app is installed
+    window.addEventListener('appinstalled', () => {
+      pwaInstalled = true
+      showPwaNotice = false
+      deferredPrompt = null
+    })
+
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  })
+
+  async function installPwa() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt()
+      const result = await deferredPrompt.userChoice
+      if (result.outcome === 'accepted') {
+        showPwaNotice = false
+      }
+      deferredPrompt = null
+    }
+  }
+
+  function dismissPwaNotice() {
+    showPwaNotice = false
+    localStorage.setItem('rebond_pwa_dismissed', '1')
+  }
+
   $effect(() => {
     if (!authStore.loading && !authStore.isAuthenticated) {
       goto('/login')
@@ -144,38 +209,16 @@
 
       <!-- Footer -->
       <div class="border-t border-gray-800 px-3 py-4">
-        <!-- Status indicators -->
+        <!-- Compact status in sidebar (main banner is in content area) -->
         {#if !syncStore.isOnline}
           <div class="mb-2 flex items-center gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-400">
-            <span class="h-1.5 w-1.5 rounded-full bg-amber-400"></span>
+            <span class="h-2 w-2 animate-pulse rounded-full bg-amber-400"></span>
             Hors ligne
           </div>
-        {/if}
-        {#if syncStore.pendingCount > 0}
-          <div class="mb-2 rounded-md bg-orange-500/10 px-3 py-2">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2 text-xs font-medium text-orange-400">
-                <span class="h-1.5 w-1.5 rounded-full bg-orange-400 {syncStore.isSyncing ? 'animate-pulse' : ''}"></span>
-                {syncStore.pendingCount} en attente
-              </div>
-              <button
-                onclick={() => syncStore.syncOfflineSales()}
-                disabled={syncStore.isSyncing || !syncStore.isOnline}
-                class="text-[10px] font-semibold uppercase tracking-wide text-orange-300 hover:text-orange-200 disabled:opacity-50 transition-colors"
-              >
-                {syncStore.isSyncing ? 'Sync...' : 'Sync'}
-              </button>
-            </div>
-            {#if syncStore.lastSyncResult}
-              <div class="mt-1 text-[10px] text-orange-300/70">
-                {#if syncStore.lastSyncResult.synced > 0}
-                  {syncStore.lastSyncResult.synced} synchronisee(s)
-                {/if}
-                {#if syncStore.lastSyncResult.failed > 0}
-                  · {syncStore.lastSyncResult.failed} echouee(s)
-                {/if}
-              </div>
-            {/if}
+        {:else if syncStore.pendingCount > 0}
+          <div class="mb-2 flex items-center gap-2 rounded-md bg-blue-500/10 px-3 py-2 text-xs font-medium text-blue-400">
+            <span class="h-2 w-2 rounded-full bg-blue-400 {syncStore.isSyncing ? 'animate-spin' : ''}"></span>
+            {syncStore.pendingCount} a sync
           </div>
         {/if}
 
@@ -205,6 +248,110 @@
 
     <!-- Main content -->
     <main class="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-slate-100/50">
+      <!-- BIG offline banner -->
+      {#if !syncStore.isOnline}
+        <div class="border-b-2 border-amber-400 bg-amber-50 px-6 py-4">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/20">
+                <svg class="h-6 w-6 text-amber-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <div>
+                <p class="text-lg font-bold text-amber-800">Mode hors-ligne</p>
+                <p class="text-sm text-amber-700">Pas de connexion internet. Les ventes sont enregistrees localement.</p>
+              </div>
+            </div>
+            {#if syncStore.pendingCount > 0}
+              <div class="flex items-center gap-3">
+                <span class="rounded-full bg-amber-200 px-3 py-1 text-sm font-bold text-amber-800">
+                  {syncStore.pendingCount} en attente
+                </span>
+              </div>
+            {/if}
+          </div>
+        </div>
+      {:else if syncStore.pendingCount > 0}
+        <!-- Online but has pending sales to sync -->
+        <div class="border-b border-blue-200 bg-blue-50 px-6 py-3">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <svg class="h-5 w-5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+              </svg>
+              <span class="text-sm font-medium text-blue-800">
+                {syncStore.pendingCount} vente(s) a synchroniser
+              </span>
+              {#if syncStore.lastSyncResult}
+                <span class="text-xs text-blue-600">
+                  {#if syncStore.lastSyncResult.synced > 0}
+                    — {syncStore.lastSyncResult.synced} synchronisee(s)
+                  {/if}
+                  {#if syncStore.lastSyncResult.failed > 0}
+                    · {syncStore.lastSyncResult.failed} echouee(s)
+                  {/if}
+                </span>
+              {/if}
+            </div>
+            <button
+              onclick={() => syncStore.syncOfflineSales()}
+              disabled={syncStore.isSyncing}
+              class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 disabled:opacity-50"
+            >
+              <svg class="h-4 w-4 {syncStore.isSyncing ? 'animate-spin' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182" />
+              </svg>
+              {syncStore.isSyncing ? 'Synchronisation...' : 'Synchroniser'}
+            </button>
+          </div>
+        </div>
+      {/if}
+
+      <!-- PWA install notice -->
+      {#if showPwaNotice && !pwaInstalled}
+        <div class="border-b border-indigo-200 bg-indigo-50 px-6 py-3">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <svg class="h-5 w-5 text-indigo-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 0 0 6 3.75v16.5a2.25 2.25 0 0 0 2.25 2.25h7.5A2.25 2.25 0 0 0 18 20.25V3.75a2.25 2.25 0 0 0-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+              </svg>
+              <div class="text-sm text-indigo-800">
+                {#if pwaPlatform === 'ios'}
+                  <span class="font-semibold">Installer Rebond :</span> appuyez sur
+                  <svg class="inline h-4 w-4 align-text-bottom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15M9 12l3-3m0 0 3 3m-3-3v12" /></svg>
+                  Partager puis <strong>Sur l'ecran d'accueil</strong>
+                {:else if pwaPlatform === 'android'}
+                  <span class="font-semibold">Installer Rebond :</span> appuyez sur le menu
+                  <strong>&#8942;</strong> puis <strong>Installer l'application</strong>
+                {:else}
+                  <span class="font-semibold">Installer Rebond sur votre ordinateur</span> pour un acces rapide et le mode hors-ligne
+                {/if}
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              {#if deferredPrompt}
+                <button
+                  onclick={installPwa}
+                  class="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-indigo-700"
+                >
+                  Installer
+                </button>
+              {/if}
+              <button
+                onclick={dismissPwaNotice}
+                class="rounded p-1 text-indigo-400 transition-colors hover:text-indigo-600"
+                title="Fermer"
+              >
+                <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      {/if}
+
       <WelcomeModal />
       {@render children()}
     </main>

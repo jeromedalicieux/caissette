@@ -32,6 +32,8 @@
   let usageCount = $state<Record<string, number>>({})
   // Sort mode
   let sortMode = $state<'default' | 'popular' | 'favorites'>(shopStore.display.posDefaultSort)
+  // View mode: grid (default cards), list (compact rows), tiles (large touch-friendly)
+  let viewMode = $state<'grid' | 'list' | 'tiles'>('grid')
 
   onMount(() => {
     // Load favorites & usage from localStorage
@@ -40,6 +42,8 @@
       if (fav) favorites = new Set(JSON.parse(fav))
       const usage = localStorage.getItem('rebond_usage')
       if (usage) usageCount = JSON.parse(usage)
+      const savedView = localStorage.getItem('rebond_view_mode')
+      if (savedView && ['grid', 'list', 'tiles'].includes(savedView)) viewMode = savedView as any
     } catch { /* ignore */ }
     loadItems()
   })
@@ -320,23 +324,55 @@
         </button>
       </div>
 
-      <!-- Sort buttons -->
-      <div class="mt-2 flex gap-1.5">
-        <button onclick={() => sortMode = 'default'}
-          class="rounded-full px-3 py-1 text-xs font-medium transition-colors
-            {sortMode === 'default' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
-          Tous
-        </button>
-        <button onclick={() => sortMode = 'favorites'}
-          class="rounded-full px-3 py-1 text-xs font-medium transition-colors
-            {sortMode === 'favorites' ? 'bg-amber-500 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
-          Favoris
-        </button>
-        <button onclick={() => sortMode = 'popular'}
-          class="rounded-full px-3 py-1 text-xs font-medium transition-colors
-            {sortMode === 'popular' ? 'bg-purple-600 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
-          Populaires
-        </button>
+      <!-- Sort + View mode buttons -->
+      <div class="mt-2 flex items-center justify-between">
+        <div class="flex gap-1.5">
+          <button onclick={() => sortMode = 'default'}
+            class="rounded-full px-3 py-1 text-xs font-medium transition-colors
+              {sortMode === 'default' ? 'bg-gray-800 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
+            Tous
+          </button>
+          <button onclick={() => sortMode = 'favorites'}
+            class="rounded-full px-3 py-1 text-xs font-medium transition-colors
+              {sortMode === 'favorites' ? 'bg-amber-500 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
+            Favoris
+          </button>
+          <button onclick={() => sortMode = 'popular'}
+            class="rounded-full px-3 py-1 text-xs font-medium transition-colors
+              {sortMode === 'popular' ? 'bg-purple-600 text-white' : 'bg-white text-gray-500 ring-1 ring-gray-200 hover:bg-gray-50'}">
+            Populaires
+          </button>
+        </div>
+        <!-- View mode switcher -->
+        <div class="flex rounded-lg bg-white ring-1 ring-gray-200 overflow-hidden">
+          <button
+            onclick={() => { viewMode = 'grid'; localStorage.setItem('rebond_view_mode', 'grid') }}
+            class="p-1.5 transition-colors {viewMode === 'grid' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-600'}"
+            title="Grille"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6Zm0 9.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6Zm0 9.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+            </svg>
+          </button>
+          <button
+            onclick={() => { viewMode = 'list'; localStorage.setItem('rebond_view_mode', 'list') }}
+            class="p-1.5 transition-colors {viewMode === 'list' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-600'}"
+            title="Liste"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+            </svg>
+          </button>
+          <button
+            onclick={() => { viewMode = 'tiles'; localStorage.setItem('rebond_view_mode', 'tiles') }}
+            class="p-1.5 transition-colors {viewMode === 'tiles' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-600'}"
+            title="Grandes tuiles"
+          >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h12A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h12a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25H6A2.25 2.25 0 0 1 3.75 18v-2.25Z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Quick add form -->
@@ -389,7 +425,92 @@
           <p class="text-sm font-medium">Aucun article en vente</p>
           <p class="mt-1 text-xs text-gray-400">Ajoutez des articles depuis la page Articles pour les voir ici</p>
         </div>
+      {:else if viewMode === 'list'}
+        <!-- LIST VIEW: compact rows -->
+        <div class="rounded-xl bg-white shadow-sm ring-1 ring-gray-200 overflow-hidden">
+          {#each filteredItems() as item, idx}
+            <div
+              class="flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors hover:bg-blue-50 {idx > 0 ? 'border-t border-gray-100' : ''} {item.type === 'service' ? 'bg-purple-50/30' : ''}"
+              onclick={() => addToCart(item)}
+              onkeydown={(e) => { if (e.key === 'Enter') addToCart(item) }}
+              role="button"
+              tabindex="0"
+            >
+              <!-- Favorite star -->
+              <button
+                onclick={(e) => toggleFavorite(e, item.id)}
+                class="shrink-0 p-0.5 transition-colors {favorites.has(item.id) ? 'text-amber-400' : 'text-gray-200 hover:text-amber-300'}"
+                aria-label="Favori"
+              >
+                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clip-rule="evenodd" />
+                </svg>
+              </button>
+              <span class="flex-1 truncate text-sm font-medium text-gray-900">{item.name}</span>
+              {#if item.type === 'service'}
+                <span class="shrink-0 rounded-full bg-purple-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-purple-700">Service</span>
+              {/if}
+              {#if shopStore.display.showCategories && item.category}
+                <span class="shrink-0 rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] text-gray-500">{item.category}</span>
+              {/if}
+              {#if shopStore.display.posShowSku && item.sku}
+                <span class="shrink-0 text-xs text-gray-400">{item.sku}</span>
+              {/if}
+              {#if shopStore.display.posShowUsageCount && usageCount[item.id]}
+                <span class="shrink-0 rounded bg-gray-100 px-1 py-0.5 text-[10px] font-medium text-gray-500">{usageCount[item.id]}x</span>
+              {/if}
+              <span class="shrink-0 text-sm font-bold text-blue-600">{formatPrice(item.current_price ?? item.currentPrice)}</span>
+            </div>
+          {/each}
+        </div>
+      {:else if viewMode === 'tiles'}
+        <!-- TILES VIEW: large touch-friendly cards -->
+        <div class="grid grid-cols-2 gap-4">
+          {#each filteredItems() as item}
+            <div
+              class="group relative rounded-2xl bg-white text-left shadow-sm transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer p-5 {item.type === 'service' ? 'ring-2 ring-purple-200' : ''} {favorites.has(item.id) ? 'ring-2 ring-amber-300' : ''}"
+              onclick={() => addToCart(item)}
+              onkeydown={(e) => { if (e.key === 'Enter') addToCart(item) }}
+              role="button"
+              tabindex="0"
+            >
+              <!-- Favorite star -->
+              <button
+                onclick={(e) => toggleFavorite(e, item.id)}
+                class="absolute top-3 right-3 p-1.5 rounded-full transition-colors
+                  {favorites.has(item.id) ? 'text-amber-400 hover:text-amber-500' : 'text-gray-200 hover:text-amber-300'}"
+                aria-label="Favori"
+              >
+                <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z" clip-rule="evenodd" />
+                </svg>
+              </button>
+
+              {#if item.type === 'service'}
+                <span class="mb-2 inline-block rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold uppercase text-purple-700">Service</span>
+              {/if}
+              <div class="pr-8">
+                <h3 class="text-base font-semibold text-gray-900 leading-tight">{item.name}</h3>
+              </div>
+              {#if shopStore.display.showCategories && item.category}
+                <span class="mt-2 inline-block rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600">{item.category}</span>
+              {/if}
+              <div class="mt-3 flex items-end justify-between">
+                <div class="flex items-center gap-2">
+                  {#if shopStore.display.posShowSku && item.sku}
+                    <span class="text-xs text-gray-400">{item.sku}</span>
+                  {/if}
+                  {#if shopStore.display.posShowUsageCount && usageCount[item.id]}
+                    <span class="rounded bg-gray-100 px-1.5 py-0.5 text-xs font-medium text-gray-500">{usageCount[item.id]}x</span>
+                  {/if}
+                </div>
+                <span class="text-2xl font-bold text-blue-600">{formatPrice(item.current_price ?? item.currentPrice)}</span>
+              </div>
+            </div>
+          {/each}
+        </div>
       {:else}
+        <!-- GRID VIEW: default cards -->
         <div class="grid gap-3 {shopStore.display.posColumns === 2 ? 'grid-cols-2' : shopStore.display.posColumns === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-3'}">
           {#each filteredItems() as item}
             <div
