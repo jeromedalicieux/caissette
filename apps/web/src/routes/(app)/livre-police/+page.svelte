@@ -1,11 +1,14 @@
 <script lang="ts">
   import { policeLedger } from '$lib/api/client'
+  import { shopStore } from '$lib/stores/shop.svelte'
+  import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
 
   let list = $state<any[]>([])
   let loading = $state(true)
 
   onMount(async () => {
+    if (!shopStore.hasDepositSale) { goto('/caisse'); return }
     try {
       list = await policeLedger.list()
     } catch { /* ignore */ }

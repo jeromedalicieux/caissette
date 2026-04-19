@@ -1,5 +1,7 @@
 <script lang="ts">
   import { depositors } from '$lib/api/client'
+  import { shopStore } from '$lib/stores/shop.svelte'
+  import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
 
   let list = $state<any[]>([])
@@ -18,7 +20,10 @@
   let idDocNumber = $state('')
   let commissionRate = $state(4000)
 
-  onMount(loadList)
+  onMount(() => {
+    if (!shopStore.hasDepositSale) { goto('/caisse'); return }
+    loadList()
+  })
 
   async function loadList() {
     loading = true

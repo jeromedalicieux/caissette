@@ -3,7 +3,7 @@ import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { createMiddleware } from 'hono/factory'
-import type { ShopId } from '@rebond/types'
+import { type ShopId, type ShopSettings, DEFAULT_SHOP_SETTINGS } from '@rebond/types'
 import { generateUuidV7 } from '@rebond/utils'
 import { shops } from './schema.js'
 
@@ -31,6 +31,35 @@ export const tenantMiddleware = createMiddleware<{ Variables: TenantVariables }>
     await next()
   },
 )
+
+// ─── Settings parser ───
+
+export function parseSettings(json: string | null): ShopSettings {
+  if (!json) return { ...DEFAULT_SHOP_SETTINGS, features: { ...DEFAULT_SHOP_SETTINGS.features } }
+
+  let raw: Record<string, any>
+  try {
+    raw = JSON.parse(json)
+  } catch {
+    return { ...DEFAULT_SHOP_SETTINGS, features: { ...DEFAULT_SHOP_SETTINGS.features } }
+  }
+
+  // Retrocompat: if defaultCommissionRate exists but no features → was a deposit-sale shop
+  const hasFeatures = raw.features && typeof raw.features === 'object'
+  const depositSale = hasFeatures
+    ? Boolean(raw.features.depositSale)
+    : raw.defaultCommissionRate != null
+
+  return {
+    features: { depositSale },
+    defaultCommissionRate: typeof raw.defaultCommissionRate === 'number'
+      ? raw.defaultCommissionRate
+      : DEFAULT_SHOP_SETTINGS.defaultCommissionRate,
+    receiptFooter: typeof raw.receiptFooter === 'string'
+      ? raw.receiptFooter
+      : DEFAULT_SHOP_SETTINGS.receiptFooter,
+  }
+}
 
 // ─── Schemas ───
 
@@ -68,10 +97,7 @@ export function createTenantRoutes(getDb: (c: any) => DrizzleD1Database) {
       address: body.address,
       timezone: body.timezone,
       currency: 'EUR',
-      settingsJson: JSON.stringify({
-        defaultCommissionRate: 4000, // 40% default
-        receiptFooter: '',
-      }),
+      settingsJson: JSON.stringify(DEFAULT_SHOP_SETTINGS),
       subscriptionTier: body.subscriptionTier,
       createdAt: Date.now(),
       deletedAt: null,

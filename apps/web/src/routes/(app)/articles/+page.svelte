@@ -1,5 +1,6 @@
 <script lang="ts">
   import { items, depositors } from '$lib/api/client'
+  import { shopStore } from '$lib/stores/shop.svelte'
   import { onMount } from 'svelte'
 
   let list = $state<any[]>([])
@@ -19,11 +20,13 @@
   let initialPrice = $state('')
   let currentPrice = $state('')
   let depositorId = $state('')
-  let vatRegime = $state('deposit')
+  let vatRegime = $state(shopStore.hasDepositSale ? 'deposit' : 'normal')
   let vatRate = $state(2000)
 
   onMount(async () => {
-    await Promise.all([loadList(), loadDepositors()])
+    const promises: Promise<void>[] = [loadList()]
+    if (shopStore.hasDepositSale) promises.push(loadDepositors())
+    await Promise.all(promises)
   })
 
   async function loadList() {
@@ -44,7 +47,7 @@
 
   function resetForm() {
     name = description = category = brand = size = initialPrice = currentPrice = depositorId = ''
-    vatRegime = 'deposit'
+    vatRegime = shopStore.hasDepositSale ? 'deposit' : 'normal'
     vatRate = 2000
     editingId = null
   }
@@ -148,7 +151,7 @@
     <div class="flex items-center gap-4">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">Articles</h1>
-        <p class="text-sm text-gray-500 mt-1">Inventaire et gestion des articles en depot</p>
+        <p class="text-sm text-gray-500 mt-1">{shopStore.hasDepositSale ? 'Inventaire et gestion des articles en depot' : 'Inventaire et gestion des articles'}</p>
       </div>
       <select bind:value={statusFilter} onchange={() => loadList()}
         class="rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
@@ -199,23 +202,25 @@
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Prix (EUR) *</label>
             <input type="number" step="0.01" min="0" bind:value={initialPrice} required class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Deposant</label>
-            <select bind:value={depositorId} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
-              <option value="">Stock propre</option>
-              {#each depList as dep}
-                <option value={dep.id}>{dep.first_name ?? dep.firstName} {dep.last_name ?? dep.lastName}</option>
-              {/each}
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Regime TVA</label>
-            <select bind:value={vatRegime} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
-              <option value="deposit">TVA sur marge (depot)</option>
-              <option value="resale_item_by_item">TVA marge (achat/revente)</option>
-              <option value="normal">TVA normale</option>
-            </select>
-          </div>
+          {#if shopStore.hasDepositSale}
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Deposant</label>
+              <select bind:value={depositorId} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+                <option value="">Stock propre</option>
+                {#each depList as dep}
+                  <option value={dep.id}>{dep.first_name ?? dep.firstName} {dep.last_name ?? dep.lastName}</option>
+                {/each}
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5">Regime TVA</label>
+              <select bind:value={vatRegime} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+                <option value="deposit">TVA sur marge (depot)</option>
+                <option value="resale_item_by_item">TVA marge (achat/revente)</option>
+                <option value="normal">TVA normale</option>
+              </select>
+            </div>
+          {/if}
         {/if}
       </div>
       <div class="mt-6 flex justify-end">
@@ -262,7 +267,7 @@
                   <div class="flex gap-3">
                     <button onclick={() => startEdit(item)}
                       class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">Modifier</button>
-                    {#if item.depositor_id ?? item.depositorId}
+                    {#if shopStore.hasDepositSale && (item.depositor_id ?? item.depositorId)}
                       <button onclick={() => handleReturn(item.id)}
                         class="text-sm font-medium text-amber-600 hover:text-amber-700 transition-colors">Restituer</button>
                     {/if}

@@ -1,3 +1,5 @@
+import type { Shop, ShopSettings } from '@rebond/types'
+
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 
 let authToken: string | null = null
@@ -97,7 +99,7 @@ export const shops = {
   },
 
   getCurrent() {
-    return request<any>('/api/shop')
+    return request<Shop & { settings: ShopSettings } & Record<string, any>>('/api/shop')
   },
 
   updateCurrent(data: Record<string, unknown>) {

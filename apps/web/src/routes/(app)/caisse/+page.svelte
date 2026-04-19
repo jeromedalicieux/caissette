@@ -2,6 +2,7 @@
   import { items, sales } from '$lib/api/client'
   import { cart, type CartItem } from '$lib/stores/cart.svelte'
   import { authStore } from '$lib/stores/auth.svelte'
+  import { shopStore } from '$lib/stores/shop.svelte'
   import { onMount } from 'svelte'
 
   let availableItems = $state<any[]>([])
@@ -36,22 +37,28 @@
   }
 
   function addToCart(item: any) {
-    const commissionRate = 4000 // 40% default, TODO: from depositor/contract
-    const commissionTtc = item.depositor_id
-      ? Math.round((item.current_price ?? item.currentPrice) * commissionRate / 10000)
-      : undefined
+    const price = item.current_price ?? item.currentPrice
+    const depositorId = item.depositor_id ?? item.depositorId
+    let commissionTtc: number | undefined
+    let reversementAmount: number | undefined
+    let vatRegimeValue = item.vat_regime ?? item.vatRegime ?? 'normal'
+
+    if (shopStore.hasDepositSale && depositorId) {
+      const commissionRate = 4000 // 40% default, TODO: from depositor/contract
+      commissionTtc = Math.round(price * commissionRate / 10000)
+      reversementAmount = price - commissionTtc
+      vatRegimeValue = item.vat_regime ?? item.vatRegime ?? 'deposit'
+    }
 
     cart.add({
       itemId: item.id,
       name: item.name,
-      price: item.current_price ?? item.currentPrice,
-      depositorId: item.depositor_id ?? item.depositorId,
-      vatRegime: item.vat_regime ?? item.vatRegime ?? 'deposit',
+      price,
+      depositorId: shopStore.hasDepositSale ? depositorId : undefined,
+      vatRegime: vatRegimeValue,
       vatRate: item.vat_rate ?? item.vatRate ?? 2000,
       commissionTtc,
-      reversementAmount: commissionTtc
-        ? (item.current_price ?? item.currentPrice) - commissionTtc
-        : undefined,
+      reversementAmount,
     })
 
     // Remove from available list
@@ -217,9 +224,11 @@
             <li class="flex items-center justify-between py-2">
               <div class="min-w-0 flex-1">
                 <div class="truncate text-sm font-medium text-gray-900">{item.name}</div>
-                <span class="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
-                  {vatLabel(item.vatRegime)}
-                </span>
+                {#if shopStore.hasDepositSale}
+                  <span class="inline-block rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+                    {vatLabel(item.vatRegime)}
+                  </span>
+                {/if}
               </div>
               <div class="flex items-center gap-3 pl-3">
                 <span class="text-sm font-semibold text-gray-900">{formatPrice(item.price)}</span>

@@ -1,5 +1,7 @@
 <script lang="ts">
   import { contracts, depositors } from '$lib/api/client'
+  import { shopStore } from '$lib/stores/shop.svelte'
+  import { goto } from '$app/navigation'
   import { onMount } from 'svelte'
 
   let list = $state<any[]>([])
@@ -14,6 +16,7 @@
   let expiresInDays = $state(90)
 
   onMount(async () => {
+    if (!shopStore.hasDepositSale) { goto('/caisse'); return }
     await Promise.all([loadList(), loadDepositors()])
   })
 

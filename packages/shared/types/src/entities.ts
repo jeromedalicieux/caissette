@@ -209,6 +209,24 @@ export interface PoliceLedgerEntry {
   hash: Hash
 }
 
+// ─── Shop Settings ───
+
+export interface ShopFeatures {
+  depositSale: boolean
+}
+
+export interface ShopSettings {
+  features: ShopFeatures
+  defaultCommissionRate: number // Bps (basis points, e.g. 4000 = 40%)
+  receiptFooter: string
+}
+
+export const DEFAULT_SHOP_SETTINGS: ShopSettings = {
+  features: { depositSale: false },
+  defaultCommissionRate: 4000,
+  receiptFooter: '',
+}
+
 export interface AuditLogEntry {
   id: string
   shopId: ShopId | null

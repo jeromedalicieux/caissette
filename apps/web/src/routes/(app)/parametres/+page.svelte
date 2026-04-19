@@ -1,5 +1,6 @@
 <script lang="ts">
   import { shops } from '$lib/api/client'
+  import { shopStore } from '$lib/stores/shop.svelte'
   import { onMount } from 'svelte'
 
   let loading = $state(true)
@@ -13,6 +14,7 @@
   let phone = $state('')
   let email = $state('')
   let vatRegime = $state('margin')
+  let togglingDeposit = $state(false)
 
   onMount(async () => {
     try {
@@ -40,6 +42,19 @@
       error = e.message
     }
     saving = false
+  }
+
+  async function toggleDepositSale() {
+    togglingDeposit = true
+    error = ''
+    try {
+      const newValue = !shopStore.hasDepositSale
+      await shopStore.updateSettings({ features: { depositSale: newValue } })
+      success = newValue ? 'Module depot-vente active.' : 'Module depot-vente desactive.'
+    } catch (e: any) {
+      error = e.message
+    }
+    togglingDeposit = false
   }
 </script>
 
@@ -108,5 +123,31 @@
         </button>
       </div>
     </form>
+
+    <!-- Modules -->
+    <div class="mt-8 max-w-2xl rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+      <h2 class="text-lg font-semibold text-gray-900 mb-1">Modules</h2>
+      <p class="text-sm text-gray-500 mb-5">Activez ou desactivez les fonctionnalites optionnelles</p>
+
+      <div class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-4">
+        <div>
+          <div class="text-sm font-medium text-gray-900">Depot-vente</div>
+          <div class="text-xs text-gray-500 mt-0.5">Gestion des deposants, contrats, commissions et livre de police</div>
+        </div>
+        <button
+          onclick={toggleDepositSale}
+          disabled={togglingDeposit}
+          class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2 disabled:opacity-50
+            {shopStore.hasDepositSale ? 'bg-blue-600' : 'bg-gray-200'}"
+          role="switch"
+          aria-checked={shopStore.hasDepositSale}
+        >
+          <span
+            class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200
+              {shopStore.hasDepositSale ? 'translate-x-5' : 'translate-x-0'}"
+          ></span>
+        </button>
+      </div>
+    </div>
   {/if}
 </div>

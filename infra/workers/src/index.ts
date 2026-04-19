@@ -4,7 +4,7 @@ import { logger } from 'hono/logger'
 import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1'
 import { createEventBus } from '@rebond/event-bus'
 import { createAuthRoutes, createAuthMiddleware, requireAuth } from '@rebond/auth'
-import { tenantMiddleware, createTenantRoutes } from '@rebond/tenant'
+import { tenantMiddleware, createTenantRoutes, parseSettings } from '@rebond/tenant'
 import { createDepotsRoutes, createContractsRoutes } from '@rebond/depots'
 import { createCatalogRoutes } from '@rebond/catalog'
 import { createCaisseRoutes } from '@rebond/caisse'
@@ -83,8 +83,9 @@ api.get('/shop', async (c) => {
   const { shops } = await import('@rebond/tenant')
   const user = (c as any).get('user')
   const result = await db.select().from(shops).where(eq(shops.id, user.shopId)).limit(1)
-  if (result.length === 0) return c.json({ error: 'Boutique introuvable' }, 404)
-  return c.json(result[0])
+  const shop = result[0]
+  if (!shop) return c.json({ error: 'Boutique introuvable' }, 404)
+  return c.json({ ...shop, settings: parseSettings(shop.settingsJson) })
 })
 
 api.patch('/shop', async (c) => {
@@ -92,6 +93,22 @@ api.patch('/shop', async (c) => {
   const { shops } = await import('@rebond/tenant')
   const user = (c as any).get('user')
   const body = await c.req.json()
+
+  // If settings is provided, merge with existing and serialize
+  if (body.settings) {
+    const current = await db.select().from(shops).where(eq(shops.id, user.shopId)).limit(1)
+    const currentShop = current[0]
+    if (!currentShop) return c.json({ error: 'Boutique introuvable' }, 404)
+    const existing = parseSettings(currentShop.settingsJson)
+    const merged = {
+      ...existing,
+      ...body.settings,
+      features: { ...existing.features, ...(body.settings.features ?? {}) },
+    }
+    delete body.settings
+    body.settingsJson = JSON.stringify(merged)
+  }
+
   await db.update(shops).set(body).where(eq(shops.id, user.shopId))
   return c.json({ ok: true })
 })
