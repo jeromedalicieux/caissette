@@ -360,24 +360,36 @@ export const vatApi = {
 
 // ─── CSV Export ───
 
+async function downloadFile(url: string, fallbackFilename: string) {
+  const token = getAuthToken()
+  const res = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    throw new ApiError(res.status, (body as any).error ?? 'Erreur serveur')
+  }
+  const blob = await res.blob()
+  const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? fallbackFilename
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
 export const csvExport = {
   async download(start: string, end: string) {
-    const token = getAuthToken()
-    const res = await fetch(`${API_BASE}/api/export/csv?start=${start}&end=${end}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    })
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({ error: res.statusText }))
-      throw new ApiError(res.status, (body as any).error ?? 'Erreur serveur')
-    }
-    const blob = await res.blob()
-    const filename = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'ventes.csv'
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
+    await downloadFile(`${API_BASE}/api/export/csv?start=${start}&end=${end}`, 'ventes.csv')
+  },
+  async downloadJournal(start: string, end: string) {
+    await downloadFile(`${API_BASE}/api/export/journal-csv?start=${start}&end=${end}`, 'journal_caisse.csv')
+  },
+  async downloadClosures(start: string, end: string) {
+    await downloadFile(`${API_BASE}/api/export/closures-csv?start=${start}&end=${end}`, 'clotures.csv')
+  },
+  async downloadMovements(start: string, end: string) {
+    await downloadFile(`${API_BASE}/api/export/movements-csv?start=${start}&end=${end}`, 'mouvements_caisse.csv')
   },
 }
 

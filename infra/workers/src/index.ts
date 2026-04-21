@@ -1640,6 +1640,209 @@ api.get('/export/csv', async (c) => {
   })
 })
 
+// ─── CSV Export: Journal de caisse (par periode) ───
+
+api.get('/export/journal-csv', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+
+  if (user.role === 'cashier') {
+    return c.json({ error: 'Acces reserve aux responsables' }, 403)
+  }
+
+  const startParam = c.req.query('start')
+  const endParam = c.req.query('end')
+  if (!startParam || !endParam) {
+    return c.json({ error: 'Parametres start et end requis (YYYY-MM-DD)' }, 400)
+  }
+
+  const start = new Date(startParam).getTime()
+  const end = new Date(endParam + 'T23:59:59.999').getTime()
+
+  const { sales } = await import('@caissette/caisse')
+
+  const periodSales = await db.select().from(sales)
+    .where(and(eq(sales.shopId, user.shopId), gte(sales.soldAt, start), lte(sales.soldAt, end)))
+    .orderBy(sales.soldAt)
+
+  const periodMovements = await db.select().from(cashMovements)
+    .where(and(eq(cashMovements.shopId, user.shopId), gte(cashMovements.recordedAt, start), lte(cashMovements.recordedAt, end)))
+    .orderBy(cashMovements.recordedAt)
+
+  // Group by day
+  const days = new Map<string, { sales: any[]; movements: any[] }>()
+  for (const s of periodSales) {
+    const day = new Date(s.soldAt).toISOString().slice(0, 10)
+    if (!days.has(day)) days.set(day, { sales: [], movements: [] })
+    days.get(day)!.sales.push(s)
+  }
+  for (const m of periodMovements) {
+    const day = new Date(m.recordedAt).toISOString().slice(0, 10)
+    if (!days.has(day)) days.set(day, { sales: [], movements: [] })
+    days.get(day)!.movements.push(m)
+  }
+
+  const header = 'Date;Nb ventes;Nb avoirs;Total ventes TTC;Total avoirs TTC;Especes;Carte;Cheque;Virement;Autre;Fond de caisse;Especes attendues'
+  const lines: string[] = [header]
+  const fmt = (cents: number) => (cents / 100).toFixed(2).replace('.', ',')
+
+  const sortedDays = [...days.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  for (const [day, data] of sortedDays) {
+    const dateStr = new Date(day).toLocaleDateString('fr-FR')
+    let totalSales = 0, totalRefunds = 0, salesCount = 0, refundsCount = 0
+    const byPayment: Record<string, number> = { cash: 0, card: 0, check: 0, transfer: 0, other: 0 }
+
+    for (const s of data.sales) {
+      if (s.total >= 0) { totalSales += s.total; salesCount++ }
+      else { totalRefunds += Math.abs(s.total); refundsCount++ }
+      byPayment[s.paymentMethod] = (byPayment[s.paymentMethod] ?? 0) + s.total
+    }
+
+    let openingFloat = 0
+    for (const m of data.movements) {
+      if (m.type === 'opening_float') openingFloat = m.amount
+    }
+
+    const cashExpected = openingFloat + (byPayment['cash'] ?? 0)
+
+    lines.push([
+      dateStr, salesCount, refundsCount,
+      fmt(totalSales), fmt(totalRefunds),
+      fmt(byPayment['cash'] ?? 0), fmt(byPayment['card'] ?? 0),
+      fmt(byPayment['check'] ?? 0), fmt(byPayment['transfer'] ?? 0),
+      fmt(byPayment['other'] ?? 0),
+      fmt(openingFloat), fmt(cashExpected),
+    ].join(';'))
+  }
+
+  const content = lines.join('\n')
+  const filename = `journal_caisse_${startParam}_${endParam}.csv`
+
+  return new Response(content, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  })
+})
+
+// ─── CSV Export: Clotures Z ───
+
+api.get('/export/closures-csv', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+
+  if (user.role === 'cashier') {
+    return c.json({ error: 'Acces reserve aux responsables' }, 403)
+  }
+
+  const startParam = c.req.query('start')
+  const endParam = c.req.query('end')
+
+  let conditions = [eq(closures.shopId, user.shopId)]
+  if (startParam && endParam) {
+    const start = new Date(startParam).getTime()
+    const end = new Date(endParam + 'T23:59:59.999').getTime()
+    conditions.push(gte(closures.generatedAt, start))
+    conditions.push(lte(closures.generatedAt, end))
+  }
+
+  const result = await db.select().from(closures)
+    .where(and(...conditions))
+    .orderBy(closures.generatedAt)
+
+  const header = 'Type;Periode debut;Periode fin;Nb ventes;Total TTC;TVA;Premier ticket;Dernier ticket;Genere le;Hash'
+  const lines: string[] = [header]
+  const fmt = (cents: number) => (cents / 100).toFixed(2).replace('.', ',')
+
+  for (const cl of result) {
+    const typeLabel = cl.type === 'daily' ? 'Z journalier' : cl.type === 'monthly' ? 'Mensuelle' : cl.type
+    lines.push([
+      typeLabel,
+      new Date(cl.periodStart).toLocaleDateString('fr-FR'),
+      new Date(cl.periodEnd).toLocaleDateString('fr-FR'),
+      cl.salesCount,
+      fmt(cl.totalAmount),
+      fmt(cl.totalVat),
+      cl.firstReceiptNumber ?? '',
+      cl.lastReceiptNumber ?? '',
+      new Date(cl.generatedAt).toLocaleString('fr-FR'),
+      cl.hash?.slice(0, 16) ?? '',
+    ].join(';'))
+  }
+
+  const content = lines.join('\n')
+  const suffix = startParam && endParam ? `_${startParam}_${endParam}` : ''
+  const filename = `clotures${suffix}.csv`
+
+  return new Response(content, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  })
+})
+
+// ─── CSV Export: Mouvements de caisse ───
+
+api.get('/export/movements-csv', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+
+  if (user.role === 'cashier') {
+    return c.json({ error: 'Acces reserve aux responsables' }, 403)
+  }
+
+  const startParam = c.req.query('start')
+  const endParam = c.req.query('end')
+  if (!startParam || !endParam) {
+    return c.json({ error: 'Parametres start et end requis (YYYY-MM-DD)' }, 400)
+  }
+
+  const start = new Date(startParam).getTime()
+  const end = new Date(endParam + 'T23:59:59.999').getTime()
+
+  const result = await db.select().from(cashMovements)
+    .where(and(
+      eq(cashMovements.shopId, user.shopId),
+      gte(cashMovements.recordedAt, start),
+      lte(cashMovements.recordedAt, end),
+    ))
+    .orderBy(cashMovements.recordedAt)
+
+  const header = 'Date;Heure;Type;Montant;Note'
+  const lines: string[] = [header]
+  const fmt = (cents: number) => (cents / 100).toFixed(2).replace('.', ',')
+
+  const typeLabels: Record<string, string> = {
+    opening_float: 'Fond de caisse',
+    closing_count: 'Comptage fermeture',
+    deposit: 'Depot en caisse',
+    withdrawal: 'Retrait de caisse',
+  }
+
+  for (const m of result) {
+    const d = new Date(m.recordedAt)
+    lines.push([
+      d.toLocaleDateString('fr-FR'),
+      d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      typeLabels[m.type] ?? m.type,
+      fmt(m.amount),
+      `"${(m.note ?? '').replace(/"/g, '""')}"`,
+    ].join(';'))
+  }
+
+  const content = lines.join('\n')
+  const filename = `mouvements_caisse_${startParam}_${endParam}.csv`
+
+  return new Response(content, {
+    headers: {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    },
+  })
+})
+
 app.route('/api', api)
 
 // ─── FEC helpers ───

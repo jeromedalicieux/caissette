@@ -8,6 +8,9 @@
   let success = $state('')
   let exportingCsv = $state(false)
   let exportingFec = $state(false)
+  let exportingJournal = $state(false)
+  let exportingClosures = $state(false)
+  let exportingMovements = $state(false)
 
   // Period defaults to current month
   const now = new Date()
@@ -72,6 +75,45 @@
       error = e.message
     }
     exportingFec = false
+  }
+
+  async function handleJournalExport() {
+    if (!startDate || !endDate) { error = 'Selectionnez une periode'; return }
+    error = ''
+    exportingJournal = true
+    try {
+      await csvExport.downloadJournal(startDate, endDate)
+      success = 'Journal de caisse CSV telecharge.'
+    } catch (e: any) {
+      error = e.message
+    }
+    exportingJournal = false
+  }
+
+  async function handleClosuresExport() {
+    if (!startDate || !endDate) { error = 'Selectionnez une periode'; return }
+    error = ''
+    exportingClosures = true
+    try {
+      await csvExport.downloadClosures(startDate, endDate)
+      success = 'Clotures CSV telecharge.'
+    } catch (e: any) {
+      error = e.message
+    }
+    exportingClosures = false
+  }
+
+  async function handleMovementsExport() {
+    if (!startDate || !endDate) { error = 'Selectionnez une periode'; return }
+    error = ''
+    exportingMovements = true
+    try {
+      await csvExport.downloadMovements(startDate, endDate)
+      success = 'Mouvements de caisse CSV telecharge.'
+    } catch (e: any) {
+      error = e.message
+    }
+    exportingMovements = false
   }
 </script>
 
@@ -237,20 +279,41 @@
       </div>
       <p class="text-sm text-gray-500 mb-5">Telechargez vos donnees pour le comptable</p>
 
-      <div class="flex flex-wrap gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <button onclick={handleCsvExport} disabled={exportingCsv}
           class="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-gray-900 transition-colors disabled:opacity-50">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
           </svg>
-          {exportingCsv ? 'Export...' : 'Export CSV (Excel)'}
+          {exportingCsv ? 'Export...' : 'Ventes detail (CSV)'}
+        </button>
+        <button onclick={handleJournalExport} disabled={exportingJournal}
+          class="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-gray-900 transition-colors disabled:opacity-50">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+          </svg>
+          {exportingJournal ? 'Export...' : 'Journal de caisse (CSV)'}
+        </button>
+        <button onclick={handleClosuresExport} disabled={exportingClosures}
+          class="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-gray-900 transition-colors disabled:opacity-50">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+          </svg>
+          {exportingClosures ? 'Export...' : 'Clotures Z (CSV)'}
+        </button>
+        <button onclick={handleMovementsExport} disabled={exportingMovements}
+          class="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-gray-900 transition-colors disabled:opacity-50">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+          </svg>
+          {exportingMovements ? 'Export...' : 'Mouvements de caisse (CSV)'}
         </button>
         <button onclick={handleFecExport} disabled={exportingFec}
-          class="inline-flex items-center gap-2 rounded-lg bg-gray-800 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-gray-900 transition-colors disabled:opacity-50">
+          class="inline-flex items-center gap-2 rounded-lg bg-blue-700 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-800 transition-colors disabled:opacity-50">
           <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
           </svg>
-          {exportingFec ? 'Export...' : 'Export FEC (legal)'}
+          {exportingFec ? 'Export...' : 'FEC legal (obligatoire)'}
         </button>
       </div>
     </div>
