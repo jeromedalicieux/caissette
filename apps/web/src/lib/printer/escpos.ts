@@ -213,7 +213,7 @@ interface ReceiptData {
   shop: { name: string; address: string; siret: string; vatNumber?: string }
   receiptNumber: number
   date: string
-  items: Array<{ name: string; price: number; vatRegime?: string }>
+  items: Array<{ name: string; price: number; vatRegime?: string; vatRate?: number }>
   total: number
   vatAmount: number
   paymentMethod: string
@@ -263,11 +263,39 @@ export async function printReceipt(data: ReceiptData): Promise<boolean> {
     )
   }
 
+  printer.separator()
+
+  // VAT breakdown by rate
+  const vatGroups: Record<number, { baseTtc: number; count: number }> = {}
+  for (const item of data.items) {
+    const rate = item.vatRate ?? 0 // vatRate in basis points (2000 = 20%)
+    if (!vatGroups[rate]) vatGroups[rate] = { baseTtc: 0, count: 0 }
+    vatGroups[rate].baseTtc += item.price
+    vatGroups[rate].count++
+  }
+
+  const rates = Object.keys(vatGroups).map(Number).sort((a, b) => b - a)
+  const totalHT = data.total - data.vatAmount
+
+  if (rates.length > 1 || (rates.length === 1 && rates[0] !== 0)) {
+    for (const rate of rates) {
+      const group = vatGroups[rate]!
+      const ratePercent = (rate / 100).toFixed(1).replace('.0', '').replace('.', ',')
+      const groupVat = rate > 0 ? Math.round(group.baseTtc * rate / (10000 + rate)) : 0
+      const groupHt = group.baseTtc - groupVat
+      if (rate === 0) {
+        printer.columns(`Base HT 0%`, formatPrice(groupHt))
+      } else {
+        printer.columns(`Base HT ${ratePercent}%`, formatPrice(groupHt))
+        printer.columns(`  TVA ${ratePercent}%`, formatPrice(groupVat))
+      }
+    }
+    printer.separator()
+  }
+
   printer
-    .separator()
-    // Totals
-    .columns('Total HT', formatPrice(data.total - data.vatAmount))
-    .columns('TVA', formatPrice(data.vatAmount))
+    .columns('Total HT', formatPrice(totalHT))
+    .columns('Total TVA', formatPrice(data.vatAmount))
     .boldOn()
     .columns('TOTAL TTC', formatPrice(data.total))
     .boldOff()

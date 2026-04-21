@@ -101,6 +101,7 @@
           name: i.name,
           price: i.price,
           vatRegime: i.vat_regime ?? i.vatRegime,
+          vatRate: i.vat_rate ?? i.vatRate ?? 0,
         })),
         total: selectedSale.total,
         vatAmount: selectedSale.vat_margin_amount ?? selectedSale.vatMarginAmount,
@@ -154,7 +155,7 @@
       <SectionGuide
         title="Historique des ventes"
         description="Retrouvez toutes vos transactions. Chaque vente est enregistree de maniere infalsifiable avec un hash cryptographique."
-        tips={['Filtrez par date, moyen de paiement ou statut', 'Cliquez sur Ticket pour voir le detail et l\'imprimer', 'Les responsables peuvent effectuer des avoirs (remboursements)', 'Les ventes ne peuvent pas etre modifiees ni supprimees (obligation legale)']}
+        tips={['Les ventes sont infalsifiables — obligation NF525', 'Vous pouvez reimprimer un ticket a tout moment depuis le bouton Ticket', 'Les avoirs (remboursements) sont aussi chaines et tracables', 'L\'export FEC se fait depuis la page Comptabilite', 'Les ventes ne peuvent pas etre modifiees ni supprimees (obligation legale)']}
       />
     </div>
     <p class="text-sm text-gray-500 mt-1">Toutes les transactions realisees depuis la caisse</p>

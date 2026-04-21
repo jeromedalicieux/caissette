@@ -4,7 +4,7 @@ import { logger } from 'hono/logger'
 import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1'
 import { createEventBus } from '@rebond/event-bus'
 import { createAuditLogger } from '@rebond/audit-log'
-import { createAuthRoutes, createAuthMiddleware, requireAuth } from '@rebond/auth'
+import { createAuthRoutes, createAuthMiddleware, requireAuth, hasRole } from '@rebond/auth'
 import { tenantMiddleware, createTenantRoutes, parseSettings } from '@rebond/tenant'
 import { createDepotsRoutes, createContractsRoutes } from '@rebond/depots'
 import { createCatalogRoutes } from '@rebond/catalog'
@@ -13,8 +13,48 @@ import { createLivrePoliceRoutes, registerPoliceLedgerListeners } from '@rebond/
 import { generateClosure, closures } from '@rebond/isca'
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm'
 import type { Cents, Hash, ShopId } from '@rebond/types'
-import { computeHash, computeChainedHash } from '@rebond/utils'
+import { computeHash, computeChainedHash, generateUuidV7, hashPassword } from '@rebond/utils'
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+
+// categories table reference
+const categories = sqliteTable('categories', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id').notNull(),
+  name: text('name').notNull(),
+  slug: text('slug').notNull(),
+  color: text('color'),
+  sortOrder: integer('sort_order').notNull().default(0),
+  active: integer('active').notNull().default(1),
+  showInFilters: integer('show_in_filters').notNull().default(1),
+  createdAt: integer('created_at').notNull(),
+})
+
+// cash_movements table reference
+const cashMovements = sqliteTable('cash_movements', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id').notNull(),
+  userId: text('user_id').notNull(),
+  type: text('type').notNull(),
+  amount: integer('amount').notNull(),
+  note: text('note'),
+  recordedAt: integer('recorded_at').notNull(),
+  createdAt: integer('created_at').notNull(),
+})
+
+// users table reference for user management
+const usersTable = sqliteTable('users', {
+  id: text('id').primaryKey(),
+  shopId: text('shop_id').notNull(),
+  email: text('email').notNull(),
+  name: text('name').notNull(),
+  role: text('role').notNull(),
+  pinHash: text('pin_hash'),
+  passwordHash: text('password_hash').notNull(),
+  active: integer('active').notNull().default(1),
+  permissionsJson: text('permissions_json'),
+  createdAt: integer('created_at').notNull(),
+  lastLoginAt: integer('last_login_at'),
+})
 
 // reversements table reference (mirrors infra/migrations/src/schema.ts)
 const reversements = sqliteTable('reversements', {
@@ -451,6 +491,86 @@ api.all('/police-ledger', async (c) => {
 
 // ─── Closures (Z-ticket) ───
 
+// Status endpoint: check if Z-closure is missing
+api.get('/closures/status', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  const shopId = user.shopId as ShopId
+
+  const { sales } = await import('@rebond/caisse')
+
+  // Find last daily closure
+  const lastDailyClosure = await db.select({
+    periodStart: closures.periodStart,
+    periodEnd: closures.periodEnd,
+    generatedAt: closures.generatedAt,
+  }).from(closures)
+    .where(and(eq(closures.shopId, shopId), eq(closures.type, 'daily')))
+    .orderBy(desc(closures.generatedAt))
+    .limit(1)
+
+  const lastClosureDate = lastDailyClosure[0]
+    ? new Date(lastDailyClosure[0].periodStart).toISOString().split('T')[0]
+    : null
+
+  // Check days with sales but no closure
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const sevenDaysAgo = new Date(today.getTime() - 7 * 86400000)
+
+  // Get all sales in last 7 days
+  const recentSales = await db.select({
+    soldAt: sales.soldAt,
+  }).from(sales)
+    .where(and(
+      eq(sales.shopId, shopId),
+      gte(sales.soldAt, sevenDaysAgo.getTime()),
+    ))
+
+  // Get all daily closures in last 7 days
+  const recentClosures = await db.select({
+    periodStart: closures.periodStart,
+  }).from(closures)
+    .where(and(
+      eq(closures.shopId, shopId),
+      eq(closures.type, 'daily'),
+      gte(closures.periodStart, sevenDaysAgo.getTime()),
+    ))
+
+  // Find days with sales but no closure
+  const closureDates = new Set(
+    recentClosures.map(cl => new Date(cl.periodStart).toISOString().split('T')[0])
+  )
+
+  const salesDates = new Set(
+    recentSales.map(s => {
+      const d = new Date(s.soldAt)
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString().split('T')[0]
+    })
+  )
+
+  // Don't count today (closure is done at end of day)
+  const todayStr = today.toISOString().split('T')[0]!
+  const missingDays: string[] = []
+  for (const salesDate of salesDates) {
+    if (salesDate !== todayStr && !closureDates.has(salesDate)) {
+      missingDays.push(salesDate!)
+    }
+  }
+
+  // Check if today has sales (for "has sales since last closure")
+  const hasSalesToday = salesDates.has(todayStr!)
+  const todayClosed = closureDates.has(todayStr!)
+
+  return c.json({
+    lastClosureDate,
+    daysMissing: missingDays.length,
+    missingDays: missingDays.sort(),
+    hasSalesToday,
+    todayClosed,
+  })
+})
+
 api.get('/closures', async (c) => {
   const db = getDb(c)
   const user = (c as any).get('user')
@@ -624,25 +744,30 @@ api.get('/export/fec', async (c) => {
   for (const sale of periodSales) {
     const dateStr = formatFecDate(sale.soldAt)
     const ref = `T${sale.receiptNumber}`
-    const si = await db.select().from(saleItems).where(eq(saleItems.saleId, sale.id))
+    const isRefund = sale.status === 'refunded'
+    const label = isRefund ? `AVOIR ${ref}` : `Vente ${ref}`
+    const journal = isRefund ? 'AV' : 'VE'
+    const journalLib = isRefund ? 'Avoirs' : 'Ventes'
+    const amount = Math.abs(sale.total)
+    const vatAmount = Math.abs(sale.vatMarginAmount)
 
-    // Payment account debit (total TTC)
+    // Payment account: debit for sales, credit for refunds
     const payAccount = sale.paymentMethod === 'cash' ? '530000' : '512000'
     const payLabel = sale.paymentMethod === 'cash' ? 'Caisse' : 'Banque'
-    lines.push(fecLine('VE', 'Ventes', ref, dateStr, payAccount, payLabel, '', '', ref, dateStr,
-      `Vente ${ref}`, formatFecAmount(sale.total), '0,00', '', '', dateStr, '', 'EUR'))
+    lines.push(fecLine(journal, journalLib, ref, dateStr, payAccount, payLabel, '', '', ref, dateStr,
+      label, isRefund ? '0,00' : formatFecAmount(amount), isRefund ? formatFecAmount(amount) : '0,00', '', '', dateStr, '', 'EUR'))
 
-    // Revenue credit (HT)
-    const ht = sale.total - sale.vatMarginAmount
+    // Revenue: credit for sales, debit for refunds
+    const ht = amount - vatAmount
     if (ht > 0) {
-      lines.push(fecLine('VE', 'Ventes', ref, dateStr, '707000', 'Ventes de marchandises', '', '', ref, dateStr,
-        `Vente ${ref} HT`, '0,00', formatFecAmount(ht), '', '', dateStr, '', 'EUR'))
+      lines.push(fecLine(journal, journalLib, ref, dateStr, '707000', 'Ventes de marchandises', '', '', ref, dateStr,
+        `${label} HT`, isRefund ? formatFecAmount(ht) : '0,00', isRefund ? '0,00' : formatFecAmount(ht), '', '', dateStr, '', 'EUR'))
     }
 
-    // VAT credit
-    if (sale.vatMarginAmount > 0) {
-      lines.push(fecLine('VE', 'Ventes', ref, dateStr, '445710', 'TVA collectee', '', '', ref, dateStr,
-        `TVA vente ${ref}`, '0,00', formatFecAmount(sale.vatMarginAmount), '', '', dateStr, '', 'EUR'))
+    // VAT: credit for sales, debit for refunds
+    if (vatAmount > 0) {
+      lines.push(fecLine(journal, journalLib, ref, dateStr, '445710', 'TVA collectee', '', '', ref, dateStr,
+        `TVA ${label}`, isRefund ? formatFecAmount(vatAmount) : '0,00', isRefund ? '0,00' : formatFecAmount(vatAmount), '', '', dateStr, '', 'EUR'))
     }
   }
 
@@ -821,6 +946,416 @@ api.patch('/reversements/:id', async (c) => {
     .where(and(eq(reversements.id, id), eq(reversements.shopId, user.shopId)))
 
   return c.json({ ok: true })
+})
+
+// ─── Categories ───
+
+function slugify(str: string): string {
+  return str.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+}
+
+api.get('/categories', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  const showAll = c.req.query('all') === '1'
+
+  const conditions = [eq(categories.shopId, user.shopId)]
+  if (!showAll) {
+    conditions.push(eq(categories.active, 1))
+  }
+
+  const result = await db.select().from(categories)
+    .where(and(...conditions))
+    .orderBy(categories.sortOrder)
+  return c.json(result)
+})
+
+api.post('/categories', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  if (!hasRole(user.role, 'manager')) return c.json({ error: 'Acces refuse' }, 403)
+
+  const body = await c.req.json()
+  if (!body.name?.trim()) return c.json({ error: 'Nom requis' }, 400)
+
+  const id = crypto.randomUUID()
+  const slug = slugify(body.name)
+  const now = Date.now()
+
+  // Get max sortOrder
+  const last = await db.select({ max: sql`MAX(sort_order)` }).from(categories)
+    .where(eq(categories.shopId, user.shopId))
+  const sortOrder = body.sortOrder ?? ((last[0]?.max as number ?? 0) + 1)
+
+  await db.insert(categories).values({
+    id,
+    shopId: user.shopId,
+    name: body.name.trim(),
+    slug,
+    color: body.color ?? null,
+    sortOrder,
+    active: 1,
+    showInFilters: 1,
+    createdAt: now,
+  })
+
+  return c.json({ id, slug }, 201)
+})
+
+api.patch('/categories/:id', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  if (!hasRole(user.role, 'manager')) return c.json({ error: 'Acces refuse' }, 403)
+
+  const id = c.req.param('id')
+  const body = await c.req.json()
+  const updates: Record<string, any> = {}
+
+  if (body.name !== undefined) { updates.name = body.name; updates.slug = slugify(body.name) }
+  if (body.color !== undefined) updates.color = body.color
+  if (body.sortOrder !== undefined) updates.sortOrder = body.sortOrder
+  if (body.active !== undefined) updates.active = body.active ? 1 : 0
+  if (body.showInFilters !== undefined) updates.showInFilters = body.showInFilters ? 1 : 0
+
+  if (Object.keys(updates).length === 0) return c.json({ error: 'Aucune modification' }, 400)
+
+  await db.update(categories).set(updates)
+    .where(and(eq(categories.id, id), eq(categories.shopId, user.shopId)))
+  return c.json({ ok: true })
+})
+
+api.delete('/categories/:id', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  if (!hasRole(user.role, 'manager')) return c.json({ error: 'Acces refuse' }, 403)
+
+  const id = c.req.param('id')
+  await db.delete(categories)
+    .where(and(eq(categories.id, id), eq(categories.shopId, user.shopId)))
+  return c.json({ ok: true })
+})
+
+api.post('/categories/seed', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  if (!hasRole(user.role, 'manager')) return c.json({ error: 'Acces refuse' }, 403)
+
+  const defaults = [
+    'Vetements', 'Chaussures', 'Accessoires', 'Maison', 'Livres',
+    'Jouets', 'Electronique', 'Sport', 'Decoration', 'Sacs',
+    'Service', 'Location', 'Reparation',
+  ]
+  const now = Date.now()
+  let order = 0
+
+  for (const name of defaults) {
+    const slug = slugify(name)
+    const existing = await db.select({ id: categories.id }).from(categories)
+      .where(and(eq(categories.shopId, user.shopId), eq(categories.slug, slug)))
+      .limit(1)
+    if (existing.length === 0) {
+      await db.insert(categories).values({
+        id: crypto.randomUUID(),
+        shopId: user.shopId,
+        name,
+        slug,
+        color: null,
+        sortOrder: order,
+        active: 1,
+        showInFilters: 1,
+        createdAt: now,
+      })
+    }
+    order++
+  }
+
+  return c.json({ ok: true, count: defaults.length }, 201)
+})
+
+// ─── Users Management ───
+
+api.get('/users', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  if (!hasRole(user.role, 'manager')) return c.json({ error: 'Acces refuse' }, 403)
+
+  const result = await db.select({
+    id: usersTable.id,
+    shopId: usersTable.shopId,
+    email: usersTable.email,
+    name: usersTable.name,
+    role: usersTable.role,
+    active: usersTable.active,
+    permissionsJson: usersTable.permissionsJson,
+    createdAt: usersTable.createdAt,
+    lastLoginAt: usersTable.lastLoginAt,
+  }).from(usersTable)
+    .where(eq(usersTable.shopId, user.shopId))
+    .orderBy(usersTable.createdAt)
+
+  return c.json(result)
+})
+
+api.post('/users', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  if (user.role !== 'owner') return c.json({ error: 'Seul le proprietaire peut creer des utilisateurs' }, 403)
+
+  const body = await c.req.json()
+  if (!body.email || !body.name || !body.password) {
+    return c.json({ error: 'email, name et password requis' }, 400)
+  }
+
+  const role = body.role ?? 'cashier'
+  if (!['owner', 'manager', 'cashier', 'accountant'].includes(role)) {
+    return c.json({ error: 'Role invalide' }, 400)
+  }
+
+  // Check for duplicate email
+  const existing = await db.select({ id: usersTable.id }).from(usersTable)
+    .where(and(eq(usersTable.shopId, user.shopId), eq(usersTable.email, body.email)))
+    .limit(1)
+  if (existing.length > 0) return c.json({ error: 'Cet email est deja utilise' }, 409)
+
+  const id = generateUuidV7()
+  const passwordHashValue = await hashPassword(body.password)
+  const now = Date.now()
+
+  await db.insert(usersTable).values({
+    id,
+    shopId: user.shopId,
+    email: body.email,
+    name: body.name,
+    role,
+    passwordHash: passwordHashValue,
+    active: 1,
+    permissionsJson: body.permissions ? JSON.stringify(body.permissions) : null,
+    createdAt: now,
+  })
+
+  return c.json({ id, email: body.email, name: body.name, role }, 201)
+})
+
+api.patch('/users/:id', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  if (user.role !== 'owner') return c.json({ error: 'Seul le proprietaire peut modifier les utilisateurs' }, 403)
+
+  const id = c.req.param('id')
+  const body = await c.req.json()
+  const updates: Record<string, any> = {}
+
+  if (body.name !== undefined) updates.name = body.name
+  if (body.email !== undefined) updates.email = body.email
+  if (body.role !== undefined) {
+    if (!['owner', 'manager', 'cashier', 'accountant'].includes(body.role)) {
+      return c.json({ error: 'Role invalide' }, 400)
+    }
+    updates.role = body.role
+  }
+  if (body.active !== undefined) updates.active = body.active ? 1 : 0
+  if (body.permissions !== undefined) updates.permissionsJson = JSON.stringify(body.permissions)
+  if (body.password) updates.passwordHash = await hashPassword(body.password)
+
+  if (Object.keys(updates).length === 0) return c.json({ error: 'Aucune modification' }, 400)
+
+  await db.update(usersTable).set(updates)
+    .where(and(eq(usersTable.id, id), eq(usersTable.shopId, user.shopId)))
+  return c.json({ ok: true })
+})
+
+api.delete('/users/:id', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  if (user.role !== 'owner') return c.json({ error: 'Seul le proprietaire peut supprimer des utilisateurs' }, 403)
+
+  const id = c.req.param('id')
+  if (id === user.id) return c.json({ error: 'Vous ne pouvez pas vous desactiver vous-meme' }, 400)
+
+  // Check not the last owner
+  const target = await db.select({ role: usersTable.role }).from(usersTable)
+    .where(and(eq(usersTable.id, id), eq(usersTable.shopId, user.shopId)))
+    .limit(1)
+  if (target[0]?.role === 'owner') {
+    const ownerCount = await db.select({ count: sql`COUNT(*)` }).from(usersTable)
+      .where(and(eq(usersTable.shopId, user.shopId), eq(usersTable.role, 'owner'), eq(usersTable.active, 1)))
+    if ((ownerCount[0]?.count as number) <= 1) {
+      return c.json({ error: 'Impossible de desactiver le dernier proprietaire' }, 400)
+    }
+  }
+
+  // Soft delete (set active=0)
+  await db.update(usersTable).set({ active: 0 })
+    .where(and(eq(usersTable.id, id), eq(usersTable.shopId, user.shopId)))
+  return c.json({ ok: true })
+})
+
+api.post('/users/:id/reset-password', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+  if (user.role !== 'owner') return c.json({ error: 'Seul le proprietaire peut reinitialiser les mots de passe' }, 403)
+
+  const id = c.req.param('id')
+  const body = await c.req.json()
+  if (!body.password) return c.json({ error: 'Nouveau mot de passe requis' }, 400)
+
+  const passwordHashValue = await hashPassword(body.password)
+  await db.update(usersTable).set({ passwordHash: passwordHashValue })
+    .where(and(eq(usersTable.id, id), eq(usersTable.shopId, user.shopId)))
+  return c.json({ ok: true })
+})
+
+// ─── Cash Movements ───
+
+api.post('/cash-movements', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+
+  const body = await c.req.json()
+  if (!body.type || body.amount === undefined) {
+    return c.json({ error: 'type et amount requis' }, 400)
+  }
+
+  const validTypes = ['opening_float', 'closing_count', 'deposit', 'withdrawal']
+  if (!validTypes.includes(body.type)) {
+    return c.json({ error: 'Type invalide' }, 400)
+  }
+
+  const id = crypto.randomUUID()
+  const now = Date.now()
+
+  await db.insert(cashMovements).values({
+    id,
+    shopId: user.shopId,
+    userId: user.id,
+    type: body.type,
+    amount: body.amount,
+    note: body.note ?? null,
+    recordedAt: body.recordedAt ?? now,
+    createdAt: now,
+  })
+
+  return c.json({ id }, 201)
+})
+
+api.get('/cash-movements', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+
+  if (!hasRole(user.role, 'manager') && user.role !== 'accountant') {
+    return c.json({ error: 'Acces refuse' }, 403)
+  }
+
+  const dateParam = c.req.query('date')
+  const conditions = [eq(cashMovements.shopId, user.shopId)]
+
+  if (dateParam) {
+    const dayStart = new Date(dateParam).getTime()
+    const dayEnd = dayStart + 86400000 - 1
+    conditions.push(gte(cashMovements.recordedAt, dayStart))
+    conditions.push(lte(cashMovements.recordedAt, dayEnd))
+  }
+
+  const result = await db.select().from(cashMovements)
+    .where(and(...conditions))
+    .orderBy(cashMovements.recordedAt)
+
+  return c.json(result)
+})
+
+// ─── Journal de Caisse ───
+
+api.get('/journal', async (c) => {
+  const db = getDb(c)
+  const user = (c as any).get('user')
+
+  if (!hasRole(user.role, 'manager') && user.role !== 'accountant') {
+    return c.json({ error: 'Acces refuse' }, 403)
+  }
+
+  const dateParam = c.req.query('date')
+  if (!dateParam) return c.json({ error: 'Parametre date requis (YYYY-MM-DD)' }, 400)
+
+  const dayStart = new Date(dateParam).getTime()
+  const dayEnd = dayStart + 86400000 - 1
+
+  // Get sales for the day
+  const { sales, saleItems } = await import('@rebond/caisse')
+  const daySales = await db.select().from(sales)
+    .where(and(
+      eq(sales.shopId, user.shopId),
+      gte(sales.soldAt, dayStart),
+      lte(sales.soldAt, dayEnd),
+    ))
+    .orderBy(sales.soldAt)
+
+  // Get cash movements for the day
+  const dayMovements = await db.select().from(cashMovements)
+    .where(and(
+      eq(cashMovements.shopId, user.shopId),
+      gte(cashMovements.recordedAt, dayStart),
+      lte(cashMovements.recordedAt, dayEnd),
+    ))
+    .orderBy(cashMovements.recordedAt)
+
+  // Build sales summary
+  const totalByPaymentMethod: Record<string, number> = {}
+  let totalSales = 0
+  let totalRefunds = 0
+  let salesCount = 0
+  let refundsCount = 0
+
+  const salesList = daySales.map((s: any) => {
+    totalByPaymentMethod[s.paymentMethod] = (totalByPaymentMethod[s.paymentMethod] ?? 0) + s.total
+    if (s.total >= 0) { totalSales += s.total; salesCount++ }
+    else { totalRefunds += Math.abs(s.total); refundsCount++ }
+    return {
+      id: s.id,
+      receiptNumber: s.receiptNumber,
+      soldAt: s.soldAt,
+      cashierId: s.cashierId,
+      total: s.total,
+      paymentMethod: s.paymentMethod,
+      status: s.status,
+    }
+  })
+
+  // Cash calculation
+  let openingFloat = 0
+  let closingCount = 0
+  let depositsTotal = 0
+  let withdrawalsTotal = 0
+  let hasClosing = false
+
+  for (const m of dayMovements) {
+    if (m.type === 'opening_float') openingFloat = m.amount
+    if (m.type === 'closing_count') { closingCount = m.amount; hasClosing = true }
+    if (m.type === 'deposit') depositsTotal += m.amount
+    if (m.type === 'withdrawal') withdrawalsTotal += m.amount
+  }
+
+  const cashSales = totalByPaymentMethod['cash'] ?? 0
+  const cashExpected = openingFloat + cashSales + depositsTotal - withdrawalsTotal
+  const cashDiscrepancy = hasClosing ? closingCount - cashExpected : null
+
+  return c.json({
+    date: dateParam,
+    sales: salesList,
+    cashMovements: dayMovements,
+    summary: {
+      totalByPaymentMethod,
+      totalSales,
+      totalRefunds,
+      cashExpected,
+      cashCounted: hasClosing ? closingCount : null,
+      cashDiscrepancy,
+      salesCount,
+      refundsCount,
+      openingFloat,
+    },
+  })
 })
 
 // ─── Dashboard ───

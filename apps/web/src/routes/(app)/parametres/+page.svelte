@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { shops, exportApi, attestation } from '$lib/api/client'
+  import { shops, exportApi, attestation, categoriesApi } from '$lib/api/client'
   import { shopStore } from '$lib/stores/shop.svelte'
   import { authStore } from '$lib/stores/auth.svelte'
   import { onMount } from 'svelte'
@@ -24,6 +24,15 @@
   let attestationData = $state<any>(null)
   let showAttestation = $state(false)
 
+  // Categories
+  let catList = $state<any[]>([])
+  let catLoading = $state(false)
+  let showCatForm = $state(false)
+  let catEditId = $state<string | null>(null)
+  let catName = $state('')
+  let catColor = $state('')
+  let catSubmitting = $state(false)
+
   onMount(async () => {
     try {
       const shop = await shops.getCurrent()
@@ -37,7 +46,67 @@
       error = e.message
     }
     loading = false
+    loadCategories()
   })
+
+  async function loadCategories() {
+    catLoading = true
+    try {
+      catList = await categoriesApi.list(true)
+    } catch { /* ignore */ }
+    catLoading = false
+  }
+
+  async function seedCategories() {
+    try {
+      await categoriesApi.seed()
+      await loadCategories()
+      success = 'Categories par defaut creees.'
+    } catch (e: any) {
+      error = e.message
+    }
+  }
+
+  async function handleCatSubmit() {
+    if (!catName.trim()) return
+    catSubmitting = true
+    error = ''
+    try {
+      if (catEditId) {
+        await categoriesApi.update(catEditId, { name: catName, color: catColor || null })
+      } else {
+        await categoriesApi.create({ name: catName, color: catColor || undefined })
+      }
+      catName = ''; catColor = ''; catEditId = null; showCatForm = false
+      await loadCategories()
+    } catch (e: any) {
+      error = e.message
+    }
+    catSubmitting = false
+  }
+
+  async function toggleCatActive(cat: any) {
+    try {
+      await categoriesApi.update(cat.id, { active: !cat.active })
+      await loadCategories()
+    } catch (e: any) { error = e.message }
+  }
+
+  async function toggleCatFilter(cat: any) {
+    const current = cat.show_in_filters ?? cat.showInFilters
+    try {
+      await categoriesApi.update(cat.id, { showInFilters: !current })
+      await loadCategories()
+    } catch (e: any) { error = e.message }
+  }
+
+  async function deleteCat(id: string) {
+    if (!confirm('Supprimer cette categorie ?')) return
+    try {
+      await categoriesApi.remove(id)
+      await loadCategories()
+    } catch (e: any) { error = e.message }
+  }
 
   async function handleSave() {
     error = ''
@@ -217,6 +286,88 @@
       </div>
     </div>
 
+    <!-- Categories -->
+    {#if isManager}
+      <div class="mt-8 max-w-2xl rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Categories</h2>
+            <p class="text-sm text-gray-500 mt-0.5">Gerez les categories d'articles et leur affichage dans les filtres de la caisse</p>
+          </div>
+          <div class="flex gap-2">
+            {#if catList.length === 0}
+              <button onclick={seedCategories}
+                class="rounded-lg bg-gray-100 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-200 transition-colors">
+                Categories par defaut
+              </button>
+            {/if}
+            <button onclick={() => { showCatForm = !showCatForm; catEditId = null; catName = ''; catColor = '' }}
+              class="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors">
+              {showCatForm ? 'Annuler' : '+ Ajouter'}
+            </button>
+          </div>
+        </div>
+
+        {#if showCatForm}
+          <form onsubmit={(e) => { e.preventDefault(); handleCatSubmit() }}
+            class="mb-4 flex items-end gap-3 rounded-lg bg-gray-50 p-3">
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Nom</label>
+              <input type="text" bind:value={catName} required placeholder="Ex: Vetements"
+                class="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" />
+            </div>
+            <div class="w-24">
+              <label class="block text-xs font-medium text-gray-600 mb-1">Couleur</label>
+              <input type="color" bind:value={catColor}
+                class="block w-full h-[38px] rounded-lg border border-gray-300 cursor-pointer" />
+            </div>
+            <button type="submit" disabled={catSubmitting}
+              class="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50">
+              {catEditId ? 'Modifier' : 'Ajouter'}
+            </button>
+          </form>
+        {/if}
+
+        {#if catLoading}
+          <p class="text-center py-4 text-gray-400 text-sm">Chargement...</p>
+        {:else if catList.length === 0}
+          <p class="text-center py-4 text-sm text-gray-400">Aucune categorie. Utilisez "Categories par defaut" pour commencer.</p>
+        {:else}
+          <div class="space-y-1">
+            {#each catList as cat}
+              <div class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-2.5 {cat.active ? '' : 'opacity-50'}">
+                <div class="flex items-center gap-3">
+                  {#if cat.color}
+                    <div class="h-4 w-4 rounded-full" style="background-color: {cat.color}"></div>
+                  {:else}
+                    <div class="h-4 w-4 rounded-full bg-gray-300"></div>
+                  {/if}
+                  <span class="text-sm font-medium text-gray-900">{cat.name}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <label class="flex items-center gap-1.5 text-xs text-gray-500" title="Visible dans les filtres caisse">
+                    <input type="checkbox"
+                      checked={cat.show_in_filters ?? cat.showInFilters}
+                      onchange={() => toggleCatFilter(cat)}
+                      class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                    Filtres
+                  </label>
+                  <button onclick={() => toggleCatActive(cat)}
+                    class="text-xs font-medium {cat.active ? 'text-amber-600 hover:text-amber-700' : 'text-green-600 hover:text-green-700'} transition-colors">
+                    {cat.active ? 'Desactiver' : 'Activer'}
+                  </button>
+                  <button onclick={() => { catEditId = cat.id; catName = cat.name; catColor = cat.color ?? ''; showCatForm = true }}
+                    class="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">Modifier</button>
+                  <button onclick={() => deleteCat(cat.id)}
+                    class="text-xs font-medium text-red-600 hover:text-red-700 transition-colors">Supprimer</button>
+                </div>
+              </div>
+            {/each}
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     <!-- Affichage -->
     <div class="mt-8 max-w-2xl rounded-xl bg-white p-6 shadow-sm border border-gray-100">
       <div class="flex items-center gap-2 mb-1">
@@ -323,6 +474,42 @@
             {/each}
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Impression ticket -->
+    <div class="mt-8 max-w-2xl rounded-xl bg-white p-6 shadow-sm border border-gray-100">
+      <div class="flex items-center gap-2 mb-1">
+        <h2 class="text-lg font-semibold text-gray-900">Impression des tickets</h2>
+        <SectionGuide
+          title="Impression des tickets"
+          description="Depuis aout 2023, le ticket de caisse ne doit etre imprime que si le client le demande (loi anti-gaspillage AGEC)."
+          tips={['Par defaut, le ticket n\'est pas imprime automatiquement', 'Apres chaque vente, un bouton permet d\'imprimer si le client le demande', 'Vous pouvez reimprimer un ticket depuis l\'historique des ventes', 'Activez l\'impression automatique si vous etes dans un secteur ou le ticket est obligatoire']}
+        />
+      </div>
+      <p class="text-sm text-gray-500 mb-5">Conformite decret n.2023-51 du 31 janvier 2023</p>
+
+      <div class="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-4">
+        <div>
+          <div class="text-sm font-medium text-gray-900">Impression automatique apres chaque vente</div>
+          <div class="text-xs text-gray-500 mt-0.5">Desactive par defaut — le ticket sera propose mais pas imprime automatiquement</div>
+        </div>
+        <button
+          onclick={() => {
+            const current = localStorage.getItem('rebond_auto_print') === '1'
+            localStorage.setItem('rebond_auto_print', current ? '0' : '1')
+            success = current ? 'Impression automatique desactivee.' : 'Impression automatique activee.'
+          }}
+          class="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:ring-offset-2
+            {typeof localStorage !== 'undefined' && localStorage.getItem('rebond_auto_print') === '1' ? 'bg-blue-600' : 'bg-gray-200'}"
+          role="switch"
+          aria-checked={typeof localStorage !== 'undefined' && localStorage.getItem('rebond_auto_print') === '1'}
+        >
+          <span
+            class="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200
+              {typeof localStorage !== 'undefined' && localStorage.getItem('rebond_auto_print') === '1' ? 'translate-x-5' : 'translate-x-0'}"
+          ></span>
+        </button>
       </div>
     </div>
 

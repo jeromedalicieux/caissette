@@ -80,8 +80,8 @@
         <h1 class="text-2xl font-bold text-gray-900">Clotures de caisse</h1>
         <SectionGuide
           title="Clotures de caisse"
-          description="Les clotures (tickets Z) sont obligatoires. Elles agregent les ventes d'une journee ou d'un mois et sont signees numeriquement."
-          tips={['Generez un Z journalier a la fin de chaque journee', 'La cloture mensuelle est necessaire pour la comptabilite', 'Chaque cloture est chainee et infalsifiable', 'Seuls les responsables (owner/manager) peuvent generer des clotures']}
+          description="Les clotures (tickets Z) sont obligatoires chaque jour ouvrable (art. 286 CGI). Elles scellent cryptographiquement toutes les ventes de la journee."
+          tips={['La cloture Z est obligatoire chaque jour ouvrable (art. 286 CGI)', 'Elle scelle cryptographiquement toutes les ventes de la journee', 'Une cloture oubliee peut etre generee a posteriori', 'La cloture mensuelle regroupe toutes les Z du mois', 'Seuls les responsables (owner/manager) peuvent generer des clotures']}
         />
       </div>
       <p class="text-sm text-gray-500 mt-1">Tickets Z journaliers et clotures mensuelles</p>

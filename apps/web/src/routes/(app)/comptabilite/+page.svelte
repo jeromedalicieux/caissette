@@ -86,7 +86,7 @@
       <SectionGuide
         title="Outils comptables"
         description="Consultez le recapitulatif TVA, exportez vos donnees pour le comptable, et generez des factures depuis les ventes."
-        tips={['Le recap TVA ventile la TVA collectee par taux et regime', 'L\'export CSV est importable dans Excel ou Google Sheets', 'L\'export FEC est le format legal pour le controle fiscal', 'Les factures se generent depuis la page Ventes']}
+        tips={['L\'export FEC est obligatoire en cas de controle fiscal (art. L47 A-1 LPF)', 'Conservez vos donnees au moins 6 ans (obligation legale)', 'Le recap TVA vous aide a preparer vos declarations', 'Tout est explique en detail dans la page Conformite', 'L\'export CSV est importable dans Excel ou Google Sheets']}
       />
     </div>
     <p class="text-sm text-gray-500 mt-1">Recapitulatifs, exports et outils pour votre comptable</p>

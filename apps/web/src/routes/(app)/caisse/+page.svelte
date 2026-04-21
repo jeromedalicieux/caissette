@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { items, sales } from '$lib/api/client'
+  import { items, sales, categoriesApi, cashMovementsApi } from '$lib/api/client'
   import { cart, type CartItem, type PaymentSplit } from '$lib/stores/cart.svelte'
   import { authStore } from '$lib/stores/auth.svelte'
   import { shopStore } from '$lib/stores/shop.svelte'
@@ -60,20 +60,40 @@
   let scanTimeout: ReturnType<typeof setTimeout> | null = null
   let scanFeedback = $state('')
 
+  // Print toast
+  let showPrintToast = $state(false)
+  let printToastTimeout: ReturnType<typeof setTimeout> | null = null
+
   // Cash float (fond de caisse)
   let showCashFloat = $state(false)
   let cashFloatInput = $state('')
   let cashFloat = $state(0) // cents
   let todayKey = $derived(new Date().toISOString().slice(0, 10))
 
-  // Extract unique categories
+  // Categories from API (with fallback to item extraction)
+  let apiCategories = $state<any[]>([])
   let categories = $derived(() => {
+    if (apiCategories.length > 0) {
+      return apiCategories.map((c: any) => c.name)
+    }
+    // Fallback: extract from items
     const cats = new Set<string>()
     for (const item of availableItems) {
       if (item.category) cats.add(item.category)
     }
     return [...cats].sort()
   })
+
+  async function loadCashFloatAndCategories() {
+    try {
+      const movements = await cashMovementsApi.list(todayKey)
+      const opening = movements.find((m: any) => m.type === 'opening_float')
+      if (opening) cashFloat = opening.amount
+    } catch { /* offline — keep localStorage value */ }
+    try {
+      apiCategories = await categoriesApi.list()
+    } catch { /* offline fallback — categories extracted from items */ }
+  }
 
   onMount(() => {
     try {
@@ -83,10 +103,13 @@
       if (usage) usageCount = JSON.parse(usage)
       const savedView = localStorage.getItem('rebond_view_mode')
       if (savedView && ['grid', 'list', 'tiles'].includes(savedView)) viewMode = savedView as any
-      // Load cash float for today
+      // Load cash float for today (localStorage first, then API upgrade)
       const floatData = localStorage.getItem(`rebond_cash_float_${todayKey}`)
       if (floatData) cashFloat = parseInt(floatData)
     } catch { /* ignore */ }
+
+    // Async: load cash float from API and categories
+    loadCashFloatAndCategories()
 
     // Barcode scanner listener (USB scanners type fast then press Enter)
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -143,11 +166,17 @@
     }
   }
 
-  function setCashFloat() {
+  async function setCashFloat() {
     const val = parseFloat(cashFloatInput.replace(',', '.'))
     if (isNaN(val) || val < 0) return
     cashFloat = Math.round(val * 100)
-    localStorage.setItem(`rebond_cash_float_${todayKey}`, String(cashFloat))
+    // Save to API (with localStorage fallback)
+    try {
+      await cashMovementsApi.create({ type: 'opening_float', amount: cashFloat })
+    } catch {
+      // Fallback to localStorage if offline
+      localStorage.setItem(`rebond_cash_float_${todayKey}`, String(cashFloat))
+    }
     showCashFloat = false
     cashFloatInput = ''
   }
@@ -401,6 +430,17 @@
       cart.clear()
       payments = []
       useMultiPayment = false
+
+      // Ticket impression opt-in (decret 2023)
+      const autoPrint = localStorage.getItem('rebond_auto_print') === '1'
+      if (autoPrint && lastSaleId) {
+        printLastReceipt()
+      } else if (lastSaleId) {
+        showPrintToast = true
+        if (printToastTimeout) clearTimeout(printToastTimeout)
+        printToastTimeout = setTimeout(() => { showPrintToast = false }, 10000)
+      }
+
       await loadItems()
     } catch (e: any) {
       if (!navigator.onLine || e.message?.includes('Failed to fetch') || e.message?.includes('Hors ligne')) {
@@ -447,7 +487,7 @@
         shop: sale.shop ?? { name: '', address: '', siret: '' },
         receiptNumber: sale.receipt_number ?? sale.receiptNumber,
         date: new Date(sale.sold_at ?? sale.soldAt).toLocaleString('fr-FR'),
-        items: (sale.items ?? []).map((i: any) => ({ name: i.name, price: i.price })),
+        items: (sale.items ?? []).map((i: any) => ({ name: i.name, price: i.price, vatRate: i.vat_rate ?? i.vatRate ?? 0 })),
         total: sale.total,
         vatAmount: sale.vat_margin_amount ?? sale.vatMarginAmount,
         paymentMethod: sale.payment_method ?? sale.paymentMethod,
@@ -484,7 +524,7 @@
         <SectionGuide
           title="Ecran de caisse"
           description="Cliquez sur un article pour l'ajouter au panier. Appliquez des remises, choisissez le paiement, puis encaissez."
-          tips={['Appliquez une remise par article ou globale depuis le panier', 'Multi-paiement : payez une partie en carte, le reste en especes', 'Filtrez par categorie avec les onglets', 'Le rendu monnaie s\'affiche apres un paiement en especes']}
+          tips={['Chaque vente est horodatee et chainee cryptographiquement — elle ne peut pas etre modifiee', 'Le ticket n\'est imprime que si le client le demande (loi anti-gaspillage 2023)', 'Pensez a faire votre cloture Z en fin de journee', 'Le fond de caisse se parametre au debut de chaque journee', 'Multi-paiement : payez une partie en carte, le reste en especes', 'Filtrez par categorie avec les onglets']}
         />
       </div>
       {#if usingCache}
@@ -1078,3 +1118,35 @@
     </div>
   </div>
 {/if}
+
+<!-- Print toast (ticket opt-in) -->
+{#if showPrintToast}
+  <div class="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl bg-gray-900 px-5 py-3.5 text-white shadow-xl animate-slide-up">
+    <svg class="h-5 w-5 text-green-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+    <span class="text-sm font-medium">Vente enregistree</span>
+    <button
+      onclick={() => { showPrintToast = false; printLastReceipt() }}
+      disabled={printing}
+      class="ml-2 rounded-lg bg-white/20 px-3 py-1.5 text-sm font-semibold hover:bg-white/30 transition-colors disabled:opacity-50"
+    >
+      {printing ? 'Impression...' : 'Imprimer le ticket'}
+    </button>
+    <button onclick={() => showPrintToast = false} class="ml-1 text-gray-400 hover:text-white transition-colors">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+{/if}
+
+<style>
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  :global(.animate-slide-up) {
+    animation: slide-up 250ms ease-out both;
+  }
+</style>

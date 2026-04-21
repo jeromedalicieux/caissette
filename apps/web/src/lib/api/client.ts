@@ -304,6 +304,16 @@ export const closuresApi = {
       body: JSON.stringify({ type }),
     })
   },
+
+  status() {
+    return request<{
+      lastClosureDate: string | null
+      daysMissing: number
+      missingDays: string[]
+      hasSalesToday: boolean
+      todayClosed: boolean
+    }>('/api/closures/status')
+  },
 }
 
 // ─── Export ───
@@ -368,6 +378,114 @@ export const csvExport = {
     a.download = filename
     a.click()
     URL.revokeObjectURL(url)
+  },
+}
+
+// ─── Categories ───
+
+export const categoriesApi = {
+  list(all = false) {
+    return request<any[]>(`/api/categories${all ? '?all=1' : ''}`)
+  },
+
+  create(data: { name: string; color?: string; sortOrder?: number }) {
+    return request<{ id: string; slug: string }>('/api/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  update(id: string, data: Record<string, unknown>) {
+    return request<{ ok: boolean }>(`/api/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  remove(id: string) {
+    return request<{ ok: boolean }>(`/api/categories/${id}`, {
+      method: 'DELETE',
+    })
+  },
+
+  seed() {
+    return request<{ ok: boolean; count: number }>('/api/categories/seed', {
+      method: 'POST',
+    })
+  },
+}
+
+// ─── Users ───
+
+export const usersApi = {
+  list() {
+    return request<any[]>('/api/users')
+  },
+
+  create(data: { email: string; password: string; name: string; role?: string; permissions?: Record<string, boolean> }) {
+    return request<{ id: string }>('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+
+  update(id: string, data: Record<string, unknown>) {
+    return request<{ ok: boolean }>(`/api/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    })
+  },
+
+  remove(id: string) {
+    return request<{ ok: boolean }>(`/api/users/${id}`, {
+      method: 'DELETE',
+    })
+  },
+
+  resetPassword(id: string, password: string) {
+    return request<{ ok: boolean }>(`/api/users/${id}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    })
+  },
+}
+
+// ─── Cash Movements ───
+
+export const cashMovementsApi = {
+  list(date?: string) {
+    const qs = date ? `?date=${date}` : ''
+    return request<any[]>(`/api/cash-movements${qs}`)
+  },
+
+  create(data: { type: string; amount: number; note?: string; recordedAt?: number }) {
+    return request<{ id: string }>('/api/cash-movements', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  },
+}
+
+// ─── Journal ───
+
+export const journalApi = {
+  get(date: string) {
+    return request<{
+      date: string
+      sales: any[]
+      cashMovements: any[]
+      summary: {
+        totalByPaymentMethod: Record<string, number>
+        totalSales: number
+        totalRefunds: number
+        cashExpected: number
+        cashCounted: number | null
+        cashDiscrepancy: number | null
+        salesCount: number
+        refundsCount: number
+        openingFloat: number
+      }
+    }>(`/api/journal?date=${date}`)
   },
 }
 

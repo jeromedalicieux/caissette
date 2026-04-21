@@ -2,6 +2,7 @@
   import { authStore } from '$lib/stores/auth.svelte'
   import { shopStore } from '$lib/stores/shop.svelte'
   import { syncStore } from '$lib/stores/sync.svelte'
+  import { closuresApi } from '$lib/api/client'
   import { goto } from '$app/navigation'
   import { page } from '$app/state'
   import WelcomeModal from '$lib/components/WelcomeModal.svelte'
@@ -9,6 +10,9 @@
 
   let { children } = $props()
   let shopInitialized = $state(false)
+
+  // Z-closure status
+  let closureStatus = $state<{ daysMissing: number; hasSalesToday: boolean; todayClosed: boolean } | null>(null)
 
   // PWA install prompt
   let deferredPrompt = $state<any>(null)
@@ -85,6 +89,18 @@
     if (authStore.isAuthenticated && !shopInitialized) {
       shopInitialized = true
       shopStore.init()
+      // Check Z-closure status (cached 5min in sessionStorage)
+      const cacheKey = 'rebond_closure_status'
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) {
+        try {
+          const { data, ts } = JSON.parse(cached)
+          if (Date.now() - ts < 300000) { closureStatus = data }
+          else { closuresApi.status().then(s => { closureStatus = s; sessionStorage.setItem(cacheKey, JSON.stringify({ data: s, ts: Date.now() })) }).catch(() => {}) }
+        } catch { closuresApi.status().then(s => { closureStatus = s; sessionStorage.setItem(cacheKey, JSON.stringify({ data: s, ts: Date.now() })) }).catch(() => {}) }
+      } else {
+        closuresApi.status().then(s => { closureStatus = s; sessionStorage.setItem(cacheKey, JSON.stringify({ data: s, ts: Date.now() })) }).catch(() => {})
+      }
     }
   })
 
@@ -117,6 +133,11 @@
       icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 14.25l6-6m4.5-3.493V21.75l-3.75-1.5-3.75 1.5-3.75-1.5-3.75 1.5V4.757c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0c1.1.128 1.907 1.077 1.907 2.185ZM9.75 9h.008v.008H9.75V9Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm4.125 4.5h.008v.008h-.008V13.5Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />',
     },
     {
+      href: '/journal',
+      label: 'Journal',
+      icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />',
+    },
+    {
       href: '/clotures',
       label: 'Clotures',
       icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />',
@@ -127,11 +148,55 @@
       icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m5.231 13.481L15 17.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v16.5c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Zm3.75 11.625a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />',
     },
     {
+      href: '/utilisateurs',
+      label: 'Utilisateurs',
+      icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />',
+    },
+    {
+      href: '/conformite',
+      label: 'Conformite',
+      icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />',
+    },
+    {
       href: '/parametres',
       label: 'Parametres',
       icon: '<path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />',
     },
   ]
+
+  // Filter nav for accountant role based on permissions
+  const userPermissions = $derived(() => {
+    if (authStore.user?.role !== 'accountant') return null
+    try {
+      const pj = (authStore.user as any)?.permissionsJson
+      return pj ? JSON.parse(pj) : null
+    } catch { return null }
+  })
+
+  const filteredCoreNav = $derived(() => {
+    const perms = userPermissions()
+    if (!perms) {
+      // Non-accountant: hide Utilisateurs for cashier
+      if (authStore.user?.role === 'cashier') {
+        return coreNav.filter(n => n.href !== '/utilisateurs')
+      }
+      return coreNav
+    }
+    // Accountant: filter based on permissions
+    const permMap: Record<string, string> = {
+      '/dashboard': 'canViewDashboard',
+      '/ventes': 'canViewSales',
+      '/journal': 'canViewJournal',
+      '/clotures': 'canViewClosures',
+      '/comptabilite': 'canViewAccounting',
+      '/conformite': 'canViewAccounting',
+    }
+    return coreNav.filter(n => {
+      const perm = permMap[n.href]
+      if (!perm) return false // hide caisse, articles, utilisateurs, parametres for accountant
+      return perms[perm] === true
+    })
+  })
 
   const depositNav: NavItem[] = [
     {
@@ -168,6 +233,11 @@
         {@html item.icon}
       </svg>
       {item.label}
+      {#if item.href === '/conformite' && closureStatus && closureStatus.daysMissing > 0}
+        <span class="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white">
+          !
+        </span>
+      {/if}
     </a>
   </li>
 {/snippet}
@@ -191,7 +261,7 @@
 
       <!-- Navigation -->
       <ul class="flex-1 space-y-0.5 px-3 py-4">
-        {#each coreNav as item}
+        {#each filteredCoreNav() as item}
           {@render navItem(item)}
         {/each}
 
@@ -243,6 +313,11 @@
           </svg>
           Deconnexion
         </button>
+
+        <!-- Legal link -->
+        <a href="/legal" class="mt-2 block px-3 py-1 text-[11px] text-gray-600 hover:text-gray-400 transition-colors">
+          Mentions legales
+        </a>
       </div>
     </nav>
 
@@ -348,6 +423,31 @@
                 </svg>
               </button>
             </div>
+          </div>
+        </div>
+      {/if}
+
+      <!-- Z-closure missing banner -->
+      {#if closureStatus && closureStatus.daysMissing > 0}
+        <div class="border-b-2 {closureStatus.daysMissing >= 3 ? 'border-red-400 bg-red-50' : 'border-orange-400 bg-orange-50'} px-6 py-3">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <svg class="h-5 w-5 {closureStatus.daysMissing >= 3 ? 'text-red-500' : 'text-orange-500'}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+              </svg>
+              <div>
+                <span class="text-sm font-semibold {closureStatus.daysMissing >= 3 ? 'text-red-800' : 'text-orange-800'}">
+                  Cloture Z manquante
+                </span>
+                <span class="text-sm {closureStatus.daysMissing >= 3 ? 'text-red-700' : 'text-orange-700'}">
+                  — {closureStatus.daysMissing} jour(s) sans cloture de caisse. C'est une obligation legale (NF525).
+                </span>
+              </div>
+            </div>
+            <a href="/clotures"
+              class="shrink-0 rounded-lg {closureStatus.daysMissing >= 3 ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700'} px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors">
+              Generer maintenant
+            </a>
           </div>
         </div>
       {/if}
