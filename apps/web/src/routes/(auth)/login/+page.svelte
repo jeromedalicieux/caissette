@@ -13,7 +13,7 @@
   let shopId = $state(localStorage.getItem('caissette_shop_id') ?? '')
 
   function fillDemo() {
-    shopId = '019da569-12d6-7a98-b5df-2f1efbc14f1c'
+    shopId = '019da1b8-2037-78cd-a172-f2fb78276c1a'
     email = 'demo@caissette.fr'
     password = 'demo1234'
     mode = 'login'
