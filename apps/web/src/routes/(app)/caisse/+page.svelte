@@ -515,7 +515,7 @@
   <title>Caisse — Caissette</title>
 </svelte:head>
 
-<div class="flex h-[calc(100vh)] flex-col md:flex-row">
+<div class="flex h-full flex-col lg:flex-row">
   <!-- Left panel: Catalog -->
   <div class="flex min-h-0 flex-1 flex-col bg-gray-50">
     <!-- Search bar + controls -->
@@ -712,7 +712,7 @@
         </div>
       {:else}
         <!-- GRID VIEW -->
-        <div class="grid gap-3 {shopStore.display.posColumns === 2 ? 'grid-cols-2' : shopStore.display.posColumns === 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-3'}">
+        <div class="grid gap-3 {shopStore.display.posColumns === 2 ? 'grid-cols-2' : shopStore.display.posColumns === 4 ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-3'}">
           {#each filteredItems() as item}
             <div
               class="group relative rounded-xl bg-white text-left shadow-sm transition-shadow hover:shadow-md cursor-pointer {shopStore.display.posCompactCards ? 'p-3' : 'p-4'} {item.type === 'service' ? 'ring-1 ring-purple-200' : ''} {favorites.has(item.id) ? 'ring-1 ring-amber-300' : ''}"
@@ -750,7 +750,7 @@
   </div>
 
   <!-- Right panel: Cart + Payment -->
-  <div class="flex w-full flex-col border-t bg-white md:w-[400px] md:border-l md:border-t-0 lg:w-[440px]">
+  <div class="flex w-full flex-col border-t bg-white max-h-[50vh] lg:max-h-none lg:w-[380px] lg:border-l lg:border-t-0 xl:w-[420px]">
     <!-- Cart header -->
     <div class="flex items-center justify-between border-b px-5 py-4">
       <div class="flex items-center gap-2">

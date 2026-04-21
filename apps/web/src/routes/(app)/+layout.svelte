@@ -11,6 +11,27 @@
   let { children } = $props()
   let shopInitialized = $state(false)
 
+  // Sidebar overlay for caisse on small screens
+  let sidebarOpen = $state(false)
+  let isLargeScreen = $state(true)
+
+  const isCaisse = $derived(page.url.pathname === '/caisse')
+
+  $effect(() => {
+    if (typeof window === 'undefined') return
+    const mql = window.matchMedia('(min-width: 1024px)')
+    isLargeScreen = mql.matches
+    const handler = (e: MediaQueryListEvent) => { isLargeScreen = e.matches }
+    mql.addEventListener('change', handler)
+    return () => mql.removeEventListener('change', handler)
+  })
+
+  // Close sidebar on navigation in overlay mode
+  $effect(() => {
+    page.url.pathname // track
+    if (!isLargeScreen && sidebarOpen) sidebarOpen = false
+  })
+
   // Z-closure status
   let closureStatus = $state<{ daysMissing: number; hasSalesToday: boolean; todayClosed: boolean } | null>(null)
 
@@ -244,8 +265,33 @@
 
 {#if authStore.isAuthenticated}
   <div class="flex min-h-screen">
+    <!-- Hamburger button (visible when sidebar is overlay) -->
+    {#if isCaisse && !isLargeScreen}
+      <button
+        onclick={() => sidebarOpen = true}
+        class="fixed top-3 left-3 z-40 flex h-10 w-10 items-center justify-center rounded-lg bg-gray-900 text-white shadow-lg"
+        aria-label="Ouvrir le menu"
+      >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+    {/if}
+
+    <!-- Backdrop -->
+    {#if isCaisse && !isLargeScreen && sidebarOpen}
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="fixed inset-0 z-40 bg-black/50"
+        onclick={() => sidebarOpen = false}
+        onkeydown={(e) => { if (e.key === 'Escape') sidebarOpen = false }}
+      ></div>
+    {/if}
+
     <!-- Sidebar -->
-    <nav class="flex w-60 flex-col bg-gradient-to-b from-gray-900 to-gray-950">
+    <nav class="{isCaisse && !isLargeScreen
+      ? 'fixed inset-y-0 left-0 z-50 w-60 transition-transform duration-200 ' + (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
+      : 'flex w-60 flex-col'} flex flex-col bg-gradient-to-b from-gray-900 to-gray-950">
       <!-- Logo area -->
       <div class="border-b border-gray-800 px-5 py-5">
         <div class="flex items-center gap-2.5">
@@ -322,7 +368,7 @@
     </nav>
 
     <!-- Main content -->
-    <main class="flex-1 overflow-y-auto bg-gradient-to-br from-gray-50 to-slate-100/50">
+    <main class="flex-1 {isCaisse ? 'overflow-hidden flex flex-col' : 'overflow-y-auto'} bg-gradient-to-br from-gray-50 to-slate-100/50">
       <!-- BIG offline banner -->
       {#if !syncStore.isOnline}
         <div class="border-b-2 border-amber-400 bg-amber-50 px-6 py-4">
@@ -453,7 +499,9 @@
       {/if}
 
       <WelcomeModal />
-      {@render children()}
+      <div class="{isCaisse ? 'flex-1 min-h-0' : ''}">
+        {@render children()}
+      </div>
     </main>
   </div>
 {/if}
