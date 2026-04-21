@@ -13,7 +13,7 @@
 </script>
 
 <svelte:head>
-  <title>Mentions legales -- Rebond</title>
+  <title>Mentions legales -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">
@@ -46,7 +46,7 @@
       <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
         <section>
           <h3 class="font-semibold text-gray-900 mb-2">Editeur du logiciel</h3>
-          <p>Rebond SAS</p>
+          <p>Caissette</p>
           <p>Logiciel de caisse certifie NF525</p>
           <p>Version 1.0.0</p>
         </section>
@@ -78,7 +78,7 @@
 
         <section>
           <h3 class="font-semibold text-gray-900 mb-2">Propriete intellectuelle</h3>
-          <p>L'ensemble du logiciel Rebond Caisse, incluant son code source, son interface et sa documentation, est la propriete exclusive de Rebond SAS. Toute reproduction ou distribution non autorisee est interdite.</p>
+          <p>L'ensemble du logiciel Caissette, incluant son code source, son interface et sa documentation, est la propriete exclusive de Caissette. Toute reproduction ou distribution non autorisee est interdite.</p>
         </section>
       </div>
 
@@ -88,7 +88,7 @@
       <div class="space-y-6 text-sm text-gray-700 leading-relaxed">
         <section>
           <h3 class="font-semibold text-gray-900 mb-2">Article 1 — Objet</h3>
-          <p>Les presentes Conditions Generales de Vente (CGV) s'appliquent a l'ensemble des ventes realisees par le commercant via le logiciel de caisse Rebond. Elles ont pour objet de definir les droits et obligations des parties dans le cadre de la vente de produits et/ou services en magasin.</p>
+          <p>Les presentes Conditions Generales de Vente (CGV) s'appliquent a l'ensemble des ventes realisees par le commercant via le logiciel de caisse Caissette. Elles ont pour objet de definir les droits et obligations des parties dans le cadre de la vente de produits et/ou services en magasin.</p>
         </section>
 
         <section>

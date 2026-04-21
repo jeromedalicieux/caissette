@@ -1,0 +1,188 @@
+---
+import Base from '../layouts/Base.astro'
+---
+
+<Base
+  title="Caissette — Logiciel de caisse open source, certifie NF525, Made in France"
+  description="Logiciel de caisse gratuit, open source et eco-responsable. Certifie NF525, mode hors-ligne, zero materiel impose. Concu en France."
+>
+  <!-- Hero -->
+  <section class="mx-auto max-w-5xl px-6 pt-20 pb-16 text-center">
+    <div class="inline-flex items-center gap-2 rounded-full bg-green-50 px-4 py-1.5 text-sm font-medium text-green-700 mb-6">
+      Open source &middot; Eco-responsable &middot; Made in France
+    </div>
+    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 leading-tight">
+      Le logiciel de caisse<br class="hidden sm:block" />
+      <span class="text-green-600">libre et leger</span>
+    </h1>
+    <p class="mt-6 text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
+      Certifie NF525, fonctionne hors-ligne, tourne sur n'importe quel navigateur. Gratuit en self-hosted, sans engagement.
+    </p>
+    <div class="mt-8 flex items-center justify-center gap-4">
+      <a href="https://app.caissette.fr" class="rounded-lg bg-gray-900 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 transition-colors">
+        Essayer gratuitement
+      </a>
+      <a href="https://github.com/caissette/caissette" class="rounded-lg bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 transition-colors" target="_blank" rel="noopener">
+        Voir sur GitHub
+      </a>
+    </div>
+    <p class="mt-4 text-xs text-gray-400">Pas de carte bancaire &middot; Pas d'installation &middot; Pret en 2 minutes</p>
+  </section>
+
+  <!-- Badges -->
+  <section class="mx-auto max-w-5xl px-6 pb-16">
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div class="rounded-xl border border-gray-100 bg-white p-5 text-center">
+        <div class="text-2xl font-bold text-gray-900">NF525</div>
+        <p class="mt-1 text-sm text-gray-500">Certification fiscale</p>
+      </div>
+      <div class="rounded-xl border border-gray-100 bg-white p-5 text-center">
+        <div class="text-2xl font-bold text-gray-900">0 &euro;</div>
+        <p class="mt-1 text-sm text-gray-500">Gratuit en self-hosted</p>
+      </div>
+      <div class="rounded-xl border border-gray-100 bg-white p-5 text-center">
+        <div class="text-2xl font-bold text-green-600">PWA</div>
+        <p class="mt-1 text-sm text-gray-500">Fonctionne hors-ligne</p>
+      </div>
+      <div class="rounded-xl border border-gray-100 bg-white p-5 text-center">
+        <div class="text-2xl font-bold text-blue-600">AGPL-3.0</div>
+        <p class="mt-1 text-sm text-gray-500">Code source ouvert</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pourquoi Caissette -->
+  <section class="bg-gray-50 py-20">
+    <div class="mx-auto max-w-5xl px-6">
+      <h2 class="text-3xl font-bold text-center text-gray-900">Pourquoi Caissette ?</h2>
+      <p class="mt-4 text-center text-gray-600 max-w-2xl mx-auto">Un logiciel de caisse qui va a l'essentiel. Pas de superflu, pas de tracking, pas de surprise sur la facture.</p>
+
+      <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <div class="text-lg font-semibold text-gray-900 mb-2">Open source</div>
+          <p class="text-sm text-gray-600">Le code est public, auditable par tous. Vous savez exactement ce qui tourne sur votre caisse. Pas de boite noire.</p>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <div class="text-lg font-semibold text-gray-900 mb-2">Certifie NF525</div>
+          <p class="text-sm text-gray-600">Conforme a la legislation fiscale francaise. Chainages cryptographiques SHA-256, signatures Ed25519, export FEC.</p>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <div class="text-lg font-semibold text-gray-900 mb-2">Eco-responsable</div>
+          <p class="text-sm text-gray-600">Leger, sobre, tourne sur du vieux materiel. Pas de serveur dedie 24/7 — le code s'execute en edge computing.</p>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <div class="text-lg font-semibold text-gray-900 mb-2">Made in France</div>
+          <p class="text-sm text-gray-600">Concu et developpe en France. Pense pour les commercants francais et leurs obligations legales.</p>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <div class="text-lg font-semibold text-gray-900 mb-2">Mode hors-ligne</div>
+          <p class="text-sm text-gray-600">Application PWA qui fonctionne sans internet. Vos ventes sont enregistrees localement et synchronisees au retour du reseau.</p>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm">
+          <div class="text-lg font-semibold text-gray-900 mb-2">Zero materiel impose</div>
+          <p class="text-sm text-gray-600">Pas besoin de tablette specifique, de terminal proprietaire ou de tiroir-caisse dedie. Un navigateur web suffit.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Fonctionnalites -->
+  <section class="py-20">
+    <div class="mx-auto max-w-5xl px-6">
+      <h2 class="text-3xl font-bold text-center text-gray-900">Tout ce qu'il faut pour vendre</h2>
+      <p class="mt-4 text-center text-gray-600 max-w-2xl mx-auto">Un logiciel complet, sans bloat. Chaque fonctionnalite repond a un besoin reel du commercant.</p>
+
+      <div class="mt-12 grid sm:grid-cols-2 gap-6">
+        <div class="flex gap-4 p-4 rounded-lg">
+          <div class="shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-500">POS</div>
+          <div>
+            <h3 class="font-semibold text-gray-900">Caisse (POS)</h3>
+            <p class="text-sm text-gray-600 mt-1">Ventes, multi-paiement, remises, avoirs, scan code-barres, fond de caisse.</p>
+          </div>
+        </div>
+        <div class="flex gap-4 p-4 rounded-lg">
+          <div class="shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-500">NF</div>
+          <div>
+            <h3 class="font-semibold text-gray-900">Certification NF525</h3>
+            <p class="text-sm text-gray-600 mt-1">Hash chaine SHA-256, signatures Ed25519, tickets Z, export FEC. Inalterable.</p>
+          </div>
+        </div>
+        <div class="flex gap-4 p-4 rounded-lg">
+          <div class="shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-500">DV</div>
+          <div>
+            <h3 class="font-semibold text-gray-900">Depot-vente</h3>
+            <p class="text-sm text-gray-600 mt-1">Gestion des deposants, contrats, commissions, reversements. Module optionnel.</p>
+          </div>
+        </div>
+        <div class="flex gap-4 p-4 rounded-lg">
+          <div class="shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-500">LP</div>
+          <div>
+            <h3 class="font-semibold text-gray-900">Livre de police</h3>
+            <p class="text-sm text-gray-600 mt-1">Registre reglementaire pour les biens d'occasion. Hash chaine pour l'inviolabilite.</p>
+          </div>
+        </div>
+        <div class="flex gap-4 p-4 rounded-lg">
+          <div class="shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-500">ESC</div>
+          <div>
+            <h3 class="font-semibold text-gray-900">Imprimante thermique</h3>
+            <p class="text-sm text-gray-600 mt-1">Compatible ESC/POS via WebUSB. Ticket avec ventilation TVA conforme.</p>
+          </div>
+        </div>
+        <div class="flex gap-4 p-4 rounded-lg">
+          <div class="shrink-0 w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center font-bold text-gray-500">PIN</div>
+          <div>
+            <h3 class="font-semibold text-gray-900">Multi-utilisateur</h3>
+            <p class="text-sm text-gray-600 mt-1">Roles (proprietaire, manager, caissier, comptable). Changement rapide par code PIN.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center mt-10">
+        <a href="/fonctionnalites" class="text-sm font-semibold text-gray-600 hover:text-gray-900">Voir toutes les fonctionnalites &rarr;</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Eco-responsable -->
+  <section class="bg-green-50 py-20">
+    <div class="mx-auto max-w-5xl px-6">
+      <h2 class="text-3xl font-bold text-center text-gray-900">Eco-responsable par conception</h2>
+      <p class="mt-4 text-center text-gray-600 max-w-2xl mx-auto">Pas un label marketing. Une architecture pensee pour consommer le minimum de ressources.</p>
+
+      <div class="mt-12 grid sm:grid-cols-2 gap-8 max-w-3xl mx-auto">
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">Edge computing</h3>
+          <p class="text-sm text-gray-600">Le code s'execute au plus pres de l'utilisateur sur le reseau mondial Cloudflare. Pas de serveur dedie qui tourne 24/7.</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">PWA legere</h3>
+          <p class="text-sm text-gray-600">Pas d'application native lourde a telecharger. L'app se charge une fois et fonctionne meme sans internet.</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">Fonctionne sur du vieux materiel</h3>
+          <p class="text-sm text-gray-600">Un navigateur moderne suffit. Pas besoin de racheter une tablette ou un PC neuf pour faire tourner la caisse.</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-2">Zero tracking</h3>
+          <p class="text-sm text-gray-600">Pas de cookies tiers, pas d'analytics invasifs, pas de scripts publicitaires. Que le strict necessaire.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-20">
+    <div class="mx-auto max-w-3xl px-6 text-center">
+      <h2 class="text-3xl font-bold text-gray-900">Pret a essayer ?</h2>
+      <p class="mt-4 text-gray-600">Gratuit, sans engagement, sans carte bancaire. Creez votre boutique en 2 minutes.</p>
+      <div class="mt-8 flex items-center justify-center gap-4">
+        <a href="https://app.caissette.fr" class="rounded-lg bg-gray-900 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-gray-800 transition-colors">
+          Essayer gratuitement
+        </a>
+        <a href="/tarifs" class="rounded-lg bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 transition-colors">
+          Voir les tarifs
+        </a>
+      </div>
+    </div>
+  </section>
+</Base>

@@ -145,7 +145,7 @@
 </script>
 
 <svelte:head>
-  <title>Ventes -- Rebond</title>
+  <title>Ventes -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">
@@ -323,7 +323,7 @@
               {selectedSale.hash}
             </div>
             <div class="text-[10px] text-gray-400 mt-1">
-              Genere par logiciel certifie Rebond Caisse v1.0.0
+              Genere par logiciel certifie Caissette v1.0.0
             </div>
           </div>
         </div>

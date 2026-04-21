@@ -69,8 +69,18 @@ export const UserRole = {
   Owner: 'owner',
   Manager: 'manager',
   Cashier: 'cashier',
+  Accountant: 'accountant',
 } as const
 export type UserRole = (typeof UserRole)[keyof typeof UserRole]
+
+/** Cash movement type */
+export const CashMovementType = {
+  OpeningFloat: 'opening_float',
+  ClosingCount: 'closing_count',
+  Deposit: 'deposit',
+  Withdrawal: 'withdrawal',
+} as const
+export type CashMovementType = (typeof CashMovementType)[keyof typeof CashMovementType]
 
 /** Contract status */
 export const ContractStatus = {

@@ -38,7 +38,7 @@
 </script>
 
 <svelte:head>
-  <title>Livre de police -- Rebond</title>
+  <title>Livre de police -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">

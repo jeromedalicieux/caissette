@@ -1,9 +1,9 @@
 import { Hono } from 'hono'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, desc } from 'drizzle-orm'
-import type { EventBus } from '@rebond/event-bus'
-import type { Hash, ShopId } from '@rebond/types'
-import { computeChainedHash, generateUuidV7 } from '@rebond/utils'
+import type { EventBus } from '@caissette/event-bus'
+import type { Hash, ShopId } from '@caissette/types'
+import { computeChainedHash, generateUuidV7 } from '@caissette/utils'
 import { policeLedger } from './schema.js'
 
 export { policeLedger } from './schema.js'

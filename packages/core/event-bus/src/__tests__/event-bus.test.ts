@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createEventBus } from '../index.js'
-import type { ShopId, UserId, DepositorId } from '@rebond/types'
+import type { ShopId, UserId, DepositorId } from '@caissette/types'
 
 describe('createEventBus', () => {
   it('emits events to registered handlers', async () => {

@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/livre-police",
+  "name": "@caissette/livre-police",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,9 +11,9 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*",
-    "@rebond/utils": "workspace:*",
-    "@rebond/event-bus": "workspace:*",
+    "@caissette/types": "workspace:*",
+    "@caissette/utils": "workspace:*",
+    "@caissette/event-bus": "workspace:*",
     "drizzle-orm": "^0.39.0",
     "hono": "^4.6.0"
   },

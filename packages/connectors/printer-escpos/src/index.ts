@@ -1,4 +1,4 @@
-import type { Sale, SaleItem, Shop } from '@rebond/types'
+import type { Sale, SaleItem, Shop } from '@caissette/types'
 
 /** ESC/POS command bytes */
 const ESC = 0x1b
@@ -128,7 +128,7 @@ export function formatReceipt(
   // Footer
   push(printer.text(''))
   push(printer.align('center'))
-  push(printer.text('Logiciel Rebond'))
+  push(printer.text('Logiciel Caissette'))
   push(printer.text('Attestation disponible sur demande'))
   push(printer.feed(3))
   push(printer.cut())

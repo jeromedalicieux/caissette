@@ -3,8 +3,8 @@ import { z } from 'zod'
 import { eq, and } from 'drizzle-orm'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { createMiddleware } from 'hono/factory'
-import type { UserRole, UserId, ShopId } from '@rebond/types'
-import { generateUuidV7, hashPassword, verifyPassword, hashPin, verifyPin } from '@rebond/utils'
+import type { UserRole, UserId, ShopId } from '@caissette/types'
+import { generateUuidV7, hashPassword, verifyPassword, hashPin, verifyPin } from '@caissette/utils'
 import { users, sessions } from './schema.js'
 
 export { users, sessions } from './schema.js'
@@ -17,6 +17,7 @@ export interface SessionUser {
   role: UserRole
   name: string
   email: string
+  permissionsJson: string | null
 }
 
 export type AuthVariables = {
@@ -69,6 +70,8 @@ export async function validateSession(
       email: users.email,
       name: users.name,
       role: users.role,
+      active: users.active,
+      permissionsJson: users.permissionsJson,
     })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
@@ -82,6 +85,12 @@ export async function validateSession(
     return null
   }
 
+  // Reject disabled users
+  if (row.active === 0) {
+    await db.delete(sessions).where(eq(sessions.id, sessionId))
+    return null
+  }
+
   return {
     user: {
       id: row.userId as UserId,
@@ -89,6 +98,7 @@ export async function validateSession(
       role: row.role as UserRole,
       name: row.name,
       email: row.email,
+      permissionsJson: row.permissionsJson ?? null,
     },
     session: { id: row.sessionId, expiresAt: row.expiresAt },
   }
@@ -119,7 +129,7 @@ export function createAuthMiddleware(getDb: (c: any) => DrizzleD1Database) {
       // Parse cookie
       const cookie = c.req.header('Cookie')
       if (cookie) {
-        const match = cookie.match(/rebond_session=([^;]+)/)
+        const match = cookie.match(/caissette_session=([^;]+)/)
         token = match?.[1]
       }
     }
@@ -162,6 +172,7 @@ const ROLE_HIERARCHY: Record<string, number> = {
   owner: 3,
   manager: 2,
   cashier: 1,
+  accountant: 1,
 }
 
 export function hasRole(userRole: UserRole, requiredRole: UserRole): boolean {
@@ -184,7 +195,7 @@ const registerSchema = z.object({
   password: z.string().min(8),
   name: z.string().trim().min(1),
   shopId: z.string(),
-  role: z.enum(['owner', 'manager', 'cashier']).default('cashier'),
+  role: z.enum(['owner', 'manager', 'cashier', 'accountant']).default('cashier'),
   pin: z.string().length(4).regex(/^\d{4}$/).optional(),
 })
 
@@ -237,7 +248,7 @@ export function createAuthRoutes(getDb: (c: any) => DrizzleD1Database) {
 
     return c.json(
       {
-        user: { id, shopId: body.shopId, email: body.email, name: body.name, role: body.role },
+        user: { id, shopId: body.shopId, email: body.email, name: body.name, role: body.role, permissionsJson: null },
         token: session.id,
         expiresAt: session.expiresAt,
       },
@@ -261,6 +272,10 @@ export function createAuthRoutes(getDb: (c: any) => DrizzleD1Database) {
       return c.json({ error: 'Email ou mot de passe incorrect' }, 401)
     }
 
+    if (user.active === 0) {
+      return c.json({ error: 'Ce compte est desactive' }, 403)
+    }
+
     const valid = await verifyPassword(body.password, user.passwordHash)
     if (!valid) {
       return c.json({ error: 'Email ou mot de passe incorrect' }, 401)
@@ -281,6 +296,7 @@ export function createAuthRoutes(getDb: (c: any) => DrizzleD1Database) {
         email: user.email,
         name: user.name,
         role: user.role,
+        permissionsJson: user.permissionsJson ?? null,
       },
       token: session.id,
       expiresAt: session.expiresAt,
@@ -315,6 +331,7 @@ export function createAuthRoutes(getDb: (c: any) => DrizzleD1Database) {
             email: user.email,
             name: user.name,
             role: user.role,
+            permissionsJson: user.permissionsJson ?? null,
           },
           token: session.id,
           expiresAt: session.expiresAt,
@@ -346,7 +363,7 @@ export function createAuthRoutes(getDb: (c: any) => DrizzleD1Database) {
     } else {
       const cookie = c.req.header('Cookie')
       if (cookie) {
-        const match = cookie.match(/rebond_session=([^;]+)/)
+        const match = cookie.match(/caissette_session=([^;]+)/)
         token = match?.[1]
       }
     }

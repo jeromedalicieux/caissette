@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/migrations",
+  "name": "@caissette/migrations",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -9,14 +9,14 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rebond/audit-log": "workspace:*",
-    "@rebond/tenant": "workspace:*",
-    "@rebond/auth": "workspace:*",
-    "@rebond/isca": "workspace:*",
-    "@rebond/depots": "workspace:*",
-    "@rebond/catalog": "workspace:*",
-    "@rebond/caisse": "workspace:*",
-    "@rebond/livre-police": "workspace:*",
+    "@caissette/audit-log": "workspace:*",
+    "@caissette/tenant": "workspace:*",
+    "@caissette/auth": "workspace:*",
+    "@caissette/isca": "workspace:*",
+    "@caissette/depots": "workspace:*",
+    "@caissette/catalog": "workspace:*",
+    "@caissette/caisse": "workspace:*",
+    "@caissette/livre-police": "workspace:*",
     "drizzle-orm": "^0.39.0"
   },
   "devDependencies": {

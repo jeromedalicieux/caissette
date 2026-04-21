@@ -1,8 +1,8 @@
 #!/bin/bash
-# Seed demo data for testing Rebond
+# Seed demo data for testing Caissette
 # Usage: ./scripts/seed-demo.sh [API_URL]
 
-API=${1:-"https://rebond-api.jerome-dalicieux9824.workers.dev"}
+API=${1:-"https://caissette-api.jerome-dalicieux9824.workers.dev"}
 echo "Seeding $API ..."
 
 # 1. Create shop
@@ -10,7 +10,7 @@ echo "--- Création boutique ---"
 SHOP=$(curl -s -X POST "$API/shops" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "Boutique Démo Rebond",
+    "name": "Boutique Démo Caissette",
     "siret": "12345678901234",
     "address": "12 rue du Commerce, 31000 Toulouse",
     "vatRegime": "deposit"
@@ -28,7 +28,7 @@ echo "--- Création utilisateur ---"
 USER=$(curl -s -X POST "$API/auth/register" \
   -H "Content-Type: application/json" \
   -d "{
-    \"email\": \"demo@rebond.fr\",
+    \"email\": \"demo@caissette.fr\",
     \"password\": \"demo1234\",
     \"name\": \"Jérôme (démo)\",
     \"shopId\": \"$SHOP_ID\",
@@ -187,7 +187,7 @@ echo "==================================="
 echo ""
 echo "Identifiants de connexion :"
 echo "  Shop ID : $SHOP_ID"
-echo "  Email   : demo@rebond.fr"
+echo "  Email   : demo@caissette.fr"
 echo "  Mot de passe : demo1234"
 echo ""
 echo "Données créées :"

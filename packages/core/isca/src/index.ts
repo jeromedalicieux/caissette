@@ -1,8 +1,8 @@
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
-import type { EventBus } from '@rebond/event-bus'
-import type { AuditLogger } from '@rebond/audit-log'
-import type { Cents, ClosureId, ClosureType, Hash, ShopId } from '@rebond/types'
-import { computeChainedHash, generateUuidV7 } from '@rebond/utils'
+import type { EventBus } from '@caissette/event-bus'
+import type { AuditLogger } from '@caissette/audit-log'
+import type { Cents, ClosureId, ClosureType, Hash, ShopId } from '@caissette/types'
+import { computeChainedHash, generateUuidV7 } from '@caissette/utils'
 import { closures } from './schema.js'
 
 export { closures } from './schema.js'

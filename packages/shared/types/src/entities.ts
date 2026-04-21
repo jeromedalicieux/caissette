@@ -11,6 +11,7 @@ import type {
   UserId,
 } from './branded.js'
 import type {
+  CashMovementType,
   ClosureType,
   ContractStatus,
   ExitReason,
@@ -52,8 +53,20 @@ export interface User {
   name: string
   role: UserRole
   pinHash: string | null
+  active: number
+  permissionsJson: string | null
   createdAt: number
   lastLoginAt: number | null
+}
+
+export interface UserPermissions {
+  canViewSales: boolean
+  canViewJournal: boolean
+  canViewClosures: boolean
+  canViewAccounting: boolean
+  canExport: boolean
+  canGenerateClosures: boolean
+  canViewDashboard: boolean
 }
 
 export interface Depositor {
@@ -97,6 +110,7 @@ export interface Item {
   name: string
   description: string | null
   category: string | null
+  categoryId: string | null
   brand: string | null
   size: string | null
   condition: ItemCondition | null
@@ -249,6 +263,29 @@ export const DEFAULT_SHOP_SETTINGS: ShopSettings = {
   display: { ...DEFAULT_SHOP_DISPLAY },
   defaultCommissionRate: 4000,
   receiptFooter: '',
+}
+
+export interface Category {
+  id: string
+  shopId: ShopId
+  name: string
+  slug: string
+  color: string | null
+  sortOrder: number
+  active: number
+  showInFilters: number
+  createdAt: number
+}
+
+export interface CashMovement {
+  id: string
+  shopId: ShopId
+  userId: UserId
+  type: CashMovementType
+  amount: Cents
+  note: string | null
+  recordedAt: number
+  createdAt: number
 }
 
 export interface AuditLogEntry {

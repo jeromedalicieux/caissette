@@ -74,7 +74,7 @@
 </script>
 
 <svelte:head>
-  <title>Contrats -- Rebond</title>
+  <title>Contrats -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">

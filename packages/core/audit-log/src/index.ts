@@ -1,7 +1,7 @@
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
-import type { EventBus } from '@rebond/event-bus'
-import type { Hash, ShopId, UserId } from '@rebond/types'
-import { computeChainedHash, generateUuidV7 } from '@rebond/utils'
+import type { EventBus } from '@caissette/event-bus'
+import type { Hash, ShopId, UserId } from '@caissette/types'
+import { computeChainedHash, generateUuidV7 } from '@caissette/utils'
 import { auditLog } from './schema.js'
 
 export { auditLog } from './schema.js'

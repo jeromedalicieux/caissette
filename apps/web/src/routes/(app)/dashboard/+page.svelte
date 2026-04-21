@@ -27,7 +27,7 @@
 </script>
 
 <svelte:head>
-  <title>Tableau de bord — Rebond</title>
+  <title>Tableau de bord — Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">

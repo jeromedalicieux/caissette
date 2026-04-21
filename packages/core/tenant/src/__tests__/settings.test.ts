@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { parseSettings } from '../index.js'
-import { DEFAULT_SHOP_SETTINGS } from '@rebond/types'
+import { DEFAULT_SHOP_SETTINGS } from '@caissette/types'
 
 describe('parseSettings', () => {
   it('returns defaults for null', () => {

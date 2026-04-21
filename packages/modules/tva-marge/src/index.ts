@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import type { Bps, Cents, VatRegime } from '@rebond/types'
-import { bankersRound } from '@rebond/utils'
+import type { Bps, Cents, VatRegime } from '@caissette/types'
+import { bankersRound } from '@caissette/utils'
 
 /** Input for VAT margin calculation */
 export const vatMarginInputSchema = z.object({

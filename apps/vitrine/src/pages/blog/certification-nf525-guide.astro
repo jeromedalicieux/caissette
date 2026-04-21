@@ -1,0 +1,60 @@
+---
+import Blog from '../../layouts/Blog.astro'
+---
+
+<Blog
+  title="Certification NF525 : tout comprendre en 5 minutes"
+  description="La certification NF525 est obligatoire pour tout logiciel de caisse en France. Voici ce qu'elle exige et comment s'y conformer."
+  date="2026-04-21"
+>
+  <p>Depuis le 1er janvier 2018, tout commercant assujetti a la TVA en France doit utiliser un logiciel de caisse certifie. Cette obligation vient de la <strong>loi anti-fraude TVA</strong> (art. 286 du CGI). Voici tout ce que vous devez savoir.</p>
+
+  <h2>Qui est concerne ?</h2>
+  <p>Tout commercant qui utilise un logiciel ou un systeme de caisse pour enregistrer les paiements de ses clients. Cela inclut :</p>
+  <ul>
+    <li>Les commerces de detail (boutiques, magasins)</li>
+    <li>Les restaurants et bars</li>
+    <li>Les depot-ventes</li>
+    <li>Les prestataires de services avec encaissement sur place</li>
+  </ul>
+  <p><strong>Exception</strong> : les entreprises en franchise de TVA (micro-entrepreneurs sous le seuil) ne sont pas concernees, mais c'est recommande pour la tracabilite.</p>
+
+  <h2>Les 4 exigences de la NF525</h2>
+
+  <h3>1. Inalterabilite</h3>
+  <p>Les donnees enregistrees (ventes, encaissements) ne doivent pas pouvoir etre modifiees ou supprimees apres coup. Concretement, cela passe par un <strong>chainage cryptographique</strong> : chaque vente contient le hash (empreinte numerique) de la vente precedente. Modifier une vente passee invaliderait toute la chaine.</p>
+  <p>Caissette utilise le chainage <strong>SHA-256</strong>, le meme algorithme que Bitcoin.</p>
+
+  <h3>2. Securisation</h3>
+  <p>Les clotures de caisse (tickets Z) doivent etre <strong>signees numeriquement</strong> pour garantir leur authenticite. Caissette utilise des signatures <strong>Ed25519</strong>, un algorithme de cryptographie moderne et fiable.</p>
+
+  <h3>3. Conservation</h3>
+  <p>Toutes les donnees doivent etre conservees pendant au minimum <strong>6 ans</strong> (obligation du Code de commerce, art. L123-22). Caissette stocke les donnees sur Cloudflare D1, avec sauvegardes.</p>
+
+  <h3>4. Archivage</h3>
+  <p>Des <strong>clotures periodiques</strong> doivent etre generees : quotidienne (ticket Z) et mensuelle. Ces clotures constituent un resume chiffre et signe de l'activite sur la periode.</p>
+
+  <h2>Le ticket Z (cloture journaliere)</h2>
+  <p>Le ticket Z est <strong>obligatoire chaque jour ouvrable</strong> (chaque jour ou au moins une vente a ete enregistree). Il contient :</p>
+  <ul>
+    <li>Le nombre de ventes</li>
+    <li>Le total TTC</li>
+    <li>La ventilation TVA par taux</li>
+    <li>Les numeros du premier et dernier ticket</li>
+    <li>Le hash de verification</li>
+    <li>La signature numerique</li>
+  </ul>
+
+  <h2>L'export FEC</h2>
+  <p>Le <strong>Fichier des Ecritures Comptables</strong> (art. A47 A-1 du Livre des Procedures Fiscales) est un export que l'administration fiscale peut demander en cas de controle. Il contient toutes les ecritures comptables de la periode dans un format standardise.</p>
+  <p>Avec Caissette, l'export FEC se genere en un clic depuis la page Comptabilite.</p>
+
+  <h2>Que risque-t-on sans certification ?</h2>
+  <p>L'amende est de <strong>7 500 EUR</strong> par logiciel non conforme. L'administration peut aussi remettre en cause la comptabilite et proceder a une taxation d'office.</p>
+
+  <h2>Comment verifier la conformite ?</h2>
+  <p>Le commercant doit pouvoir presenter une <strong>attestation de conformite</strong> delivree par l'editeur du logiciel ou un organisme accredite. Caissette genere cette attestation automatiquement depuis la page Parametres.</p>
+
+  <h2>Pourquoi choisir un logiciel open source ?</h2>
+  <p>Avec un logiciel proprietaire, vous devez faire confiance a l'editeur sur le fonctionnement du chainage cryptographique. Avec un logiciel open source comme <a href="https://caissette.fr">Caissette</a>, n'importe qui peut verifier le code source et s'assurer que la certification est bien implementee. C'est la <strong>transparence totale</strong>.</p>
+</Blog>

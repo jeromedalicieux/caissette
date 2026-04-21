@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import type { EventBus } from '@rebond/event-bus'
-import type { Cents, DepositorId, ItemId, ShopId } from '@rebond/types'
-import { generateUuidV7 } from '@rebond/utils'
+import type { EventBus } from '@caissette/event-bus'
+import type { Cents, DepositorId, ItemId, ShopId } from '@caissette/types'
+import { generateUuidV7 } from '@caissette/utils'
 import type { DrizzleD1Database } from 'drizzle-orm/d1'
 import { eq, and } from 'drizzle-orm'
 import { items, pricingRules } from './schema.js'
@@ -16,6 +16,7 @@ export const createItemSchema = z.object({
   name: z.string().trim().min(1),
   description: z.string().optional(),
   category: z.string().optional(),
+  categoryId: z.string().optional(),
   brand: z.string().optional(),
   size: z.string().optional(),
   condition: z.enum(['new', 'excellent', 'good', 'fair']).optional(),
@@ -29,6 +30,7 @@ export const updateItemSchema = z.object({
   name: z.string().trim().min(1).optional(),
   description: z.string().optional(),
   category: z.string().optional(),
+  categoryId: z.string().nullable().optional(),
   brand: z.string().optional(),
   size: z.string().optional(),
   condition: z.enum(['new', 'excellent', 'good', 'fair']).optional(),
@@ -81,6 +83,7 @@ export function createCatalogRoutes(db: DrizzleD1Database, eventBus: EventBus) {
       name: body.name,
       description: body.description ?? null,
       category: body.category ?? null,
+      categoryId: body.categoryId ?? null,
       brand: isService ? null : (body.brand ?? null),
       size: isService ? null : (body.size ?? null),
       condition: isService ? null : (body.condition ?? null),
@@ -137,6 +140,7 @@ export function createCatalogRoutes(db: DrizzleD1Database, eventBus: EventBus) {
     if (body.name !== undefined) updates.name = body.name
     if (body.description !== undefined) updates.description = body.description
     if (body.category !== undefined) updates.category = body.category
+    if (body.categoryId !== undefined) updates.categoryId = body.categoryId
     if (body.brand !== undefined) updates.brand = body.brand
     if (body.size !== undefined) updates.size = body.size
     if (body.condition !== undefined) updates.condition = body.condition

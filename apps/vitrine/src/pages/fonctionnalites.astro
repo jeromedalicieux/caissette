@@ -1,0 +1,137 @@
+---
+import Base from '../layouts/Base.astro'
+---
+
+<Base
+  title="Fonctionnalites — Caissette, logiciel de caisse open source"
+  description="Toutes les fonctionnalites de Caissette : caisse, depot-vente, livre de police, NF525, imprimante thermique, multi-utilisateur, mode hors-ligne."
+>
+  <section class="mx-auto max-w-5xl px-6 py-20">
+    <h1 class="text-4xl font-bold text-gray-900 text-center">Fonctionnalites</h1>
+    <p class="mt-4 text-center text-gray-600 max-w-2xl mx-auto">Tout ce dont un commercant a besoin. Pas plus, pas moins.</p>
+
+    <div class="mt-16 space-y-20">
+
+      <!-- Caisse -->
+      <div class="grid sm:grid-cols-2 gap-8 items-center">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900">Caisse (Point de Vente)</h2>
+          <p class="mt-3 text-gray-600">Interface rapide et intuitive pour encaisser vos clients. Pensee pour le commerce physique.</p>
+          <ul class="mt-4 space-y-2 text-sm text-gray-600">
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Scan code-barres (camera ou douchette)</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Multi-paiement (especes, carte, cheque, virement)</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Remises par article ou sur le total</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Avoirs et remboursements traces</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Gestion des quantites</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Fond de caisse et rendu monnaie</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> 3 modes d'affichage (grille, liste, tuiles)</li>
+          </ul>
+        </div>
+        <div class="rounded-xl bg-gray-100 aspect-video flex items-center justify-center text-gray-400 text-sm">
+          Capture d'ecran caisse
+        </div>
+      </div>
+
+      <!-- NF525 -->
+      <div class="grid sm:grid-cols-2 gap-8 items-center">
+        <div class="order-2 sm:order-1 rounded-xl bg-gray-100 aspect-video flex items-center justify-center text-gray-400 text-sm">
+          Schema chainages cryptographiques
+        </div>
+        <div class="order-1 sm:order-2">
+          <h2 class="text-2xl font-bold text-gray-900">Certification NF525</h2>
+          <p class="mt-3 text-gray-600">Conforme aux exigences de la legislation fiscale francaise. Chaque vente est infalsifiable.</p>
+          <ul class="mt-4 space-y-2 text-sm text-gray-600">
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Chainage cryptographique SHA-256 de chaque vente</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Signatures numeriques Ed25519 sur les clotures</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Clotures Z journalieres obligatoires</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Export FEC (Fichier des Ecritures Comptables)</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Attestation de conformite telechargeable</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Guide conformite integre dans l'application</li>
+          </ul>
+          <a href="/conformite-nf525" class="inline-block mt-4 text-sm font-semibold text-blue-600 hover:text-blue-800">En savoir plus sur la NF525 &rarr;</a>
+        </div>
+      </div>
+
+      <!-- Depot-vente -->
+      <div class="grid sm:grid-cols-2 gap-8 items-center">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900">Depot-vente</h2>
+          <p class="mt-3 text-gray-600">Module optionnel pour les commerces de depot-vente. Gerez deposants, contrats et commissions.</p>
+          <ul class="mt-4 space-y-2 text-sm text-gray-600">
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Fiche deposant complete</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Contrats de depot parametrables</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Commissions configurables par contrat</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Suivi des reversements</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> TVA sur marge automatique</li>
+          </ul>
+        </div>
+        <div class="rounded-xl bg-gray-100 aspect-video flex items-center justify-center text-gray-400 text-sm">
+          Capture d'ecran depot-vente
+        </div>
+      </div>
+
+      <!-- Livre de police -->
+      <div class="grid sm:grid-cols-2 gap-8 items-center">
+        <div class="order-2 sm:order-1 rounded-xl bg-gray-100 aspect-video flex items-center justify-center text-gray-400 text-sm">
+          Capture livre de police
+        </div>
+        <div class="order-1 sm:order-2">
+          <h2 class="text-2xl font-bold text-gray-900">Livre de police</h2>
+          <p class="mt-3 text-gray-600">Registre reglementaire numerique pour les biens d'occasion. Obligatoire pour les commercants d'objets de seconde main.</p>
+          <ul class="mt-4 space-y-2 text-sm text-gray-600">
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Enregistrement automatique a la vente</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Chainage cryptographique (inviolable)</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Identite du vendeur tracee</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Export pour les autorites</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Comptabilite -->
+      <div class="grid sm:grid-cols-2 gap-8 items-center">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900">Comptabilite et rapports</h2>
+          <p class="mt-3 text-gray-600">Tableau de bord, statistiques, exports comptables. Tout ce qu'il faut pour piloter votre activite.</p>
+          <ul class="mt-4 space-y-2 text-sm text-gray-600">
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Tableau de bord temps reel (CA, top produits)</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Journal de caisse detaille</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Grand livre et journal comptable</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Recap TVA mensuel</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Export FEC pour le comptable</li>
+          </ul>
+        </div>
+        <div class="rounded-xl bg-gray-100 aspect-video flex items-center justify-center text-gray-400 text-sm">
+          Capture comptabilite
+        </div>
+      </div>
+
+      <!-- Technique -->
+      <div class="grid sm:grid-cols-2 gap-8 items-center">
+        <div class="order-2 sm:order-1 rounded-xl bg-gray-100 aspect-video flex items-center justify-center text-gray-400 text-sm">
+          Schema architecture
+        </div>
+        <div class="order-1 sm:order-2">
+          <h2 class="text-2xl font-bold text-gray-900">Imprimante et peripheriques</h2>
+          <p class="mt-3 text-gray-600">Connectez votre imprimante thermique directement depuis le navigateur. Pas de driver a installer.</p>
+          <ul class="mt-4 space-y-2 text-sm text-gray-600">
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> ESC/POS via WebUSB (80mm)</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Ventilation TVA par taux sur le ticket</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Ticket conforme decret 2023 (opt-in)</li>
+            <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Reimprimer un ticket a tout moment</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="bg-gray-50 py-16">
+    <div class="mx-auto max-w-3xl px-6 text-center">
+      <h2 class="text-2xl font-bold text-gray-900">Convaincu ?</h2>
+      <p class="mt-3 text-gray-600">Essayez Caissette gratuitement. Aucun engagement, aucune carte bancaire.</p>
+      <a href="https://app.caissette.fr" class="inline-block mt-6 rounded-lg bg-gray-900 px-6 py-3 text-sm font-semibold text-white hover:bg-gray-800 transition-colors">
+        Essayer gratuitement
+      </a>
+    </div>
+  </section>
+</Base>

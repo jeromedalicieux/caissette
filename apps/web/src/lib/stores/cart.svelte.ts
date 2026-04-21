@@ -1,4 +1,4 @@
-import type { VatRegime } from '@rebond/types'
+import type { VatRegime } from '@caissette/types'
 
 export interface CartItem {
   itemId?: string

@@ -66,7 +66,7 @@
 </script>
 
 <svelte:head>
-  <title>Conformite fiscale -- Rebond</title>
+  <title>Conformite fiscale -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">
@@ -145,7 +145,7 @@
 
       <div class="mb-4">
         <div class="text-sm font-semibold text-gray-900 mb-2">Ce que vous devez faire</div>
-        <p class="text-sm text-gray-600">Rien de special ! Votre logiciel Rebond Caisse est certifie conforme. Toutes les ventes sont automatiquement chainees par hash cryptographique SHA-256, rendant toute modification impossible.</p>
+        <p class="text-sm text-gray-600">Rien de special ! Votre logiciel Caissette est certifie conforme. Toutes les ventes sont automatiquement chainees par hash cryptographique SHA-256, rendant toute modification impossible.</p>
       </div>
 
       <div class="mb-4">
@@ -261,7 +261,7 @@
         <ul class="text-sm text-gray-600 space-y-1 list-disc pl-5">
           <li>Pas d'action au quotidien — le FEC se genere uniquement si l'administration le demande</li>
           <li>Conservez vos donnees <strong>au moins 6 ans</strong> (obligation legale)</li>
-          <li>Rebond genere le FEC au format conforme automatiquement</li>
+          <li>Caissette genere le FEC au format conforme automatiquement</li>
         </ul>
       </div>
 
@@ -361,7 +361,7 @@
       </h2>
 
       <div class="rounded-lg bg-blue-50 border border-blue-200 p-4 mb-4">
-        <p class="text-sm text-blue-800 font-medium">Pas de panique ! Tout est enregistre automatiquement dans Rebond. Suivez cette checklist pour preparer les documents demandes.</p>
+        <p class="text-sm text-blue-800 font-medium">Pas de panique ! Tout est enregistre automatiquement dans Caissette. Suivez cette checklist pour preparer les documents demandes.</p>
       </div>
 
       <div class="space-y-3">

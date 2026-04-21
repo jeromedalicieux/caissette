@@ -11,7 +11,7 @@ import type {
   Cents,
   Bps,
   Hash,
-} from '@rebond/types'
+} from '@caissette/types'
 
 let counter = 0
 function nextId(): string {
@@ -42,7 +42,7 @@ export function createTestUser(overrides?: Partial<User>): User {
   return {
     id: nextId() as UserId,
     shopId: nextId() as ShopId,
-    email: `user-${counter}@test.rebond.fr`,
+    email: `user-${counter}@test.caissette.fr`,
     name: 'Caissier Test',
     role: 'cashier',
     pinHash: null,
@@ -59,7 +59,7 @@ export function createTestDepositor(overrides?: Partial<Depositor>): Depositor {
     externalRef: `D${String(counter).padStart(5, '0')}`,
     firstName: 'Marie',
     lastName: 'Martin',
-    email: `depositor-${counter}@test.rebond.fr`,
+    email: `depositor-${counter}@test.caissette.fr`,
     phone: '0612345678',
     address: '10 rue des Déposants, 31000 Toulouse',
     idDocumentType: 'cni',

@@ -1,4 +1,4 @@
-import type { EventMap, EventType, EventPayload } from '@rebond/types'
+import type { EventMap, EventType, EventPayload } from '@caissette/types'
 
 export type EventHandler<T extends EventType> = (payload: EventPayload<T>) => void | Promise<void>
 

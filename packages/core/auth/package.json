@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/auth",
+  "name": "@caissette/auth",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -7,16 +7,18 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*",
-    "@rebond/utils": "workspace:*",
+    "@caissette/types": "workspace:*",
+    "@caissette/utils": "workspace:*",
     "drizzle-orm": "^0.39.0",
     "hono": "^4.7.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
   }
 }

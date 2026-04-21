@@ -7,9 +7,11 @@ export const users = sqliteTable(
     shopId: text('shop_id').notNull(),
     email: text('email').notNull(),
     name: text('name').notNull(),
-    role: text('role').notNull(), // 'owner' | 'manager' | 'cashier'
+    role: text('role').notNull(), // 'owner' | 'manager' | 'cashier' | 'accountant'
     pinHash: text('pin_hash'),
     passwordHash: text('password_hash').notNull(),
+    active: integer('active').notNull().default(1),
+    permissionsJson: text('permissions_json'),
     createdAt: integer('created_at').notNull(),
     lastLoginAt: integer('last_login_at'),
   },

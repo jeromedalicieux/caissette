@@ -2,18 +2,18 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import { drizzle, type DrizzleD1Database } from 'drizzle-orm/d1'
-import { createEventBus } from '@rebond/event-bus'
-import { createAuditLogger } from '@rebond/audit-log'
-import { createAuthRoutes, createAuthMiddleware, requireAuth, hasRole } from '@rebond/auth'
-import { tenantMiddleware, createTenantRoutes, parseSettings } from '@rebond/tenant'
-import { createDepotsRoutes, createContractsRoutes } from '@rebond/depots'
-import { createCatalogRoutes } from '@rebond/catalog'
-import { createCaisseRoutes } from '@rebond/caisse'
-import { createLivrePoliceRoutes, registerPoliceLedgerListeners } from '@rebond/livre-police'
-import { generateClosure, closures } from '@rebond/isca'
+import { createEventBus } from '@caissette/event-bus'
+import { createAuditLogger } from '@caissette/audit-log'
+import { createAuthRoutes, createAuthMiddleware, requireAuth, hasRole } from '@caissette/auth'
+import { tenantMiddleware, createTenantRoutes, parseSettings } from '@caissette/tenant'
+import { createDepotsRoutes, createContractsRoutes } from '@caissette/depots'
+import { createCatalogRoutes } from '@caissette/catalog'
+import { createCaisseRoutes } from '@caissette/caisse'
+import { createLivrePoliceRoutes, registerPoliceLedgerListeners } from '@caissette/livre-police'
+import { generateClosure, closures } from '@caissette/isca'
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm'
-import type { Cents, Hash, ShopId } from '@rebond/types'
-import { computeHash, computeChainedHash, generateUuidV7, hashPassword } from '@rebond/utils'
+import type { Cents, Hash, ShopId } from '@caissette/types'
+import { computeHash, computeChainedHash, generateUuidV7, hashPassword } from '@caissette/utils'
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 
 // categories table reference
@@ -89,7 +89,7 @@ app.use('*', logger())
 app.use(
   '*',
   cors({
-    origin: ['https://app.rebond.fr', 'https://app-preview.rebond.fr', 'http://localhost:5173', 'https://rebond-web-488.pages.dev'],
+    origin: ['https://app.caissette.fr', 'https://app-preview.caissette.fr', 'http://localhost:5173', 'https://rebond-web-488.pages.dev'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-Shop-Id', 'X-User-Id'],
     credentials: true,
@@ -111,7 +111,7 @@ function createWiredEventBus(db: DrizzleD1Database) {
 
   // Resolve depositor info for police ledger entries
   const resolveDepositorInfo = async (depositorId: string) => {
-    const { depositors } = await import('@rebond/depots')
+    const { depositors } = await import('@caissette/depots')
     const result = await db.select().from(depositors).where(eq(depositors.id, depositorId)).limit(1)
     const d = result[0]
     if (!d) return null
@@ -185,7 +185,7 @@ api.use('*', requireAuth)
 // Shop settings (needs auth)
 api.get('/shop', async (c) => {
   const db = getDb(c)
-  const { shops } = await import('@rebond/tenant')
+  const { shops } = await import('@caissette/tenant')
   const user = (c as any).get('user')
   const result = await db.select().from(shops).where(eq(shops.id, user.shopId)).limit(1)
   const shop = result[0]
@@ -195,7 +195,7 @@ api.get('/shop', async (c) => {
 
 api.patch('/shop', async (c) => {
   const db = getDb(c)
-  const { shops } = await import('@rebond/tenant')
+  const { shops } = await import('@caissette/tenant')
   const user = (c as any).get('user')
   const body = await c.req.json()
 
@@ -291,7 +291,7 @@ api.post('/sales/:id/refund', async (c) => {
     return c.json({ error: 'Seul un responsable peut effectuer un avoir' }, 403)
   }
 
-  const { sales, saleItems } = await import('@rebond/caisse')
+  const { sales, saleItems } = await import('@caissette/caisse')
 
   // Get original sale
   const original = await db.select().from(sales)
@@ -370,7 +370,7 @@ api.post('/sales/:id/refund', async (c) => {
   await db.update(sales).set({ status: 'refunded' }).where(eq(sales.id, saleId))
 
   // Restore items to 'available' status
-  const { items } = await import('@rebond/catalog')
+  const { items } = await import('@caissette/catalog')
   for (const item of origItems) {
     if (item.itemId) {
       await db.update(items).set({ status: 'available', soldAt: null }).where(eq(items.id, item.itemId))
@@ -393,8 +393,8 @@ api.get('/sales/:id', async (c) => {
   const db = getDb(c)
   const user = (c as any).get('user')
   const saleId = c.req.param('id')
-  const { sales, saleItems } = await import('@rebond/caisse')
-  const { shops } = await import('@rebond/tenant')
+  const { sales, saleItems } = await import('@caissette/caisse')
+  const { shops } = await import('@caissette/tenant')
 
   const saleResult = await db.select().from(sales)
     .where(and(eq(sales.id, saleId), eq(sales.shopId, user.shopId)))
@@ -420,7 +420,7 @@ api.get('/sales/:id', async (c) => {
 api.get('/sales', async (c) => {
   const db = getDb(c)
   const user = (c as any).get('user')
-  const { sales } = await import('@rebond/caisse')
+  const { sales } = await import('@caissette/caisse')
 
   const startDate = c.req.query('start')
   const endDate = c.req.query('end')
@@ -497,7 +497,7 @@ api.get('/closures/status', async (c) => {
   const user = (c as any).get('user')
   const shopId = user.shopId as ShopId
 
-  const { sales } = await import('@rebond/caisse')
+  const { sales } = await import('@caissette/caisse')
 
   // Find last daily closure
   const lastDailyClosure = await db.select({
@@ -625,7 +625,7 @@ api.post('/closures', async (c) => {
   }
 
   // Aggregate sales for the period
-  const { sales } = await import('@rebond/caisse')
+  const { sales } = await import('@caissette/caisse')
   const periodSales = await db.select().from(sales)
     .where(and(
       eq(sales.shopId, shopId),
@@ -651,7 +651,7 @@ api.post('/closures', async (c) => {
   }
 
   // Get VAT breakdown from sale_items
-  const { saleItems } = await import('@rebond/caisse')
+  const { saleItems } = await import('@caissette/caisse')
   if (periodSales.length > 0) {
     const saleIds = periodSales.map(s => s.id)
     for (const sId of saleIds) {
@@ -720,8 +720,8 @@ api.get('/export/fec', async (c) => {
   const start = new Date(startParam).getTime()
   const end = new Date(endParam + 'T23:59:59.999').getTime()
 
-  const { sales, saleItems } = await import('@rebond/caisse')
-  const { shops } = await import('@rebond/tenant')
+  const { sales, saleItems } = await import('@caissette/caisse')
+  const { shops } = await import('@caissette/tenant')
 
   const shopResult = await db.select().from(shops).where(eq(shops.id, shopId)).limit(1)
   const shop = shopResult[0]
@@ -787,7 +787,7 @@ api.get('/export/fec', async (c) => {
 api.get('/attestation', async (c) => {
   const db = getDb(c)
   const user = (c as any).get('user')
-  const { shops } = await import('@rebond/tenant')
+  const { shops } = await import('@caissette/tenant')
   const shopResult = await db.select().from(shops).where(eq(shops.id, user.shopId)).limit(1)
   const shop = shopResult[0]
   if (!shop) return c.json({ error: 'Boutique introuvable' }, 404)
@@ -798,8 +798,8 @@ api.get('/attestation', async (c) => {
     title: 'ATTESTATION DE CONFORMITE',
     subtitle: 'Article 286, I-3° bis du Code General des Impots',
     editor: {
-      name: 'Rebond SAS',
-      software: 'Rebond Caisse',
+      name: 'Caissette',
+      software: 'Caissette',
       version: '1.0.0',
     },
     client: {
@@ -872,7 +872,7 @@ api.post('/reversements', async (c) => {
   }
 
   // Calculate from sale_items for this depositor in the period
-  const { sales, saleItems } = await import('@rebond/caisse')
+  const { sales, saleItems } = await import('@caissette/caisse')
 
   const periodSales = await db.select().from(sales)
     .where(and(
@@ -1282,7 +1282,7 @@ api.get('/journal', async (c) => {
   const dayEnd = dayStart + 86400000 - 1
 
   // Get sales for the day
-  const { sales, saleItems } = await import('@rebond/caisse')
+  const { sales, saleItems } = await import('@caissette/caisse')
   const daySales = await db.select().from(sales)
     .where(and(
       eq(sales.shopId, user.shopId),
@@ -1364,7 +1364,7 @@ api.get('/dashboard', async (c) => {
   const db = getDb(c)
   const user = (c as any).get('user')
   const shopId = user.shopId
-  const { sales, saleItems } = await import('@rebond/caisse')
+  const { sales, saleItems } = await import('@caissette/caisse')
 
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
@@ -1428,8 +1428,8 @@ api.post('/invoices', async (c) => {
 
   if (!saleId) return c.json({ error: 'saleId requis' }, 400)
 
-  const { sales, saleItems } = await import('@rebond/caisse')
-  const { shops } = await import('@rebond/tenant')
+  const { sales, saleItems } = await import('@caissette/caisse')
+  const { shops } = await import('@caissette/tenant')
 
   // Get sale
   const saleResult = await db.select().from(sales)
@@ -1512,7 +1512,7 @@ api.get('/vat-summary', async (c) => {
   const start = new Date(startParam).getTime()
   const end = new Date(endParam + 'T23:59:59.999').getTime()
 
-  const { sales, saleItems } = await import('@rebond/caisse')
+  const { sales, saleItems } = await import('@caissette/caisse')
 
   const periodSales = await db.select().from(sales)
     .where(and(
@@ -1596,7 +1596,7 @@ api.get('/export/csv', async (c) => {
   const start = new Date(startParam).getTime()
   const end = new Date(endParam + 'T23:59:59.999').getTime()
 
-  const { sales, saleItems } = await import('@rebond/caisse')
+  const { sales, saleItems } = await import('@caissette/caisse')
 
   const periodSales = await db.select().from(sales)
     .where(and(eq(sales.shopId, user.shopId), gte(sales.soldAt, start), lte(sales.soldAt, end)))

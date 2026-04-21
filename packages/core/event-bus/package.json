@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/event-bus",
+  "name": "@caissette/event-bus",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*"
+    "@caissette/types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

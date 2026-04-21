@@ -6,6 +6,7 @@ interface AuthUser {
   name: string
   email: string
   role: string
+  permissionsJson: string | null
 }
 
 function createAuthStore() {

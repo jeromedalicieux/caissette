@@ -70,7 +70,7 @@
 </script>
 
 <svelte:head>
-  <title>Clotures de caisse -- Rebond</title>
+  <title>Clotures de caisse -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">

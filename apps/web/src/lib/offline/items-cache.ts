@@ -61,6 +61,6 @@ export async function markItemSoldLocally(itemId: string): Promise<void> {
 /** Get cache stats */
 export async function getCacheStats(): Promise<{ items: number; lastRefresh: number | null }> {
   const count = await offlineDb.cachedItems.count()
-  const lastRefresh = parseInt(localStorage.getItem('rebond_cache_refresh') ?? '0') || null
+  const lastRefresh = parseInt(localStorage.getItem('caissette_cache_refresh') ?? '0') || null
   return { items: count, lastRefresh }
 }

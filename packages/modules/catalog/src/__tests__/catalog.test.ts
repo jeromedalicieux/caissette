@@ -166,6 +166,21 @@ describe('Catalog module', () => {
       )
     })
 
+    it('creates an item with categoryId', async () => {
+      const { db } = createMockDb()
+      const bus = createMockEventBus()
+      const app = createCatalogRoutes(db, bus)
+
+      const res = await app.request('/', {
+        method: 'POST',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ ...VALID_ITEM_BODY, categoryId: 'cat-1' }),
+      })
+
+      expect(res.status).toBe(201)
+      expect(db.insert).toHaveBeenCalled()
+    })
+
     it('returns 400 on invalid body (missing name)', async () => {
       const { db } = createMockDb()
       const bus = createMockEventBus()
@@ -286,6 +301,38 @@ describe('Catalog module', () => {
       expect(res.status).toBe(400)
       const data: any = await res.json()
       expect(data.error).toContain('Aucun champ')
+    })
+
+    it('updates categoryId on an available item', async () => {
+      const item = makeItem()
+      const { db } = createMockDb({ selectResult: [item] })
+      const bus = createMockEventBus()
+      const app = createCatalogRoutes(db, bus)
+
+      const res = await app.request('/item-1', {
+        method: 'PATCH',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ categoryId: 'cat-2' }),
+      })
+
+      expect(res.status).toBe(200)
+      expect(db.update).toHaveBeenCalled()
+    })
+
+    it('clears categoryId with null', async () => {
+      const item = makeItem({ categoryId: 'cat-1' })
+      const { db } = createMockDb({ selectResult: [item] })
+      const bus = createMockEventBus()
+      const app = createCatalogRoutes(db, bus)
+
+      const res = await app.request('/item-1', {
+        method: 'PATCH',
+        headers: JSON_HEADERS,
+        body: JSON.stringify({ categoryId: null }),
+      })
+
+      expect(res.status).toBe(200)
+      expect(db.update).toHaveBeenCalled()
     })
 
     it('updates currentPrice and sets statusChangedAt', async () => {

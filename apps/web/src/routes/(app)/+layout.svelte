@@ -41,7 +41,7 @@
     pwaInstalled = isPwaInstalled()
 
     // Check if user already dismissed
-    const dismissed = localStorage.getItem('rebond_pwa_dismissed')
+    const dismissed = localStorage.getItem('caissette_pwa_dismissed')
     if (!pwaInstalled && !dismissed) {
       showPwaNotice = true
     }
@@ -76,7 +76,7 @@
 
   function dismissPwaNotice() {
     showPwaNotice = false
-    localStorage.setItem('rebond_pwa_dismissed', '1')
+    localStorage.setItem('caissette_pwa_dismissed', '1')
   }
 
   $effect(() => {
@@ -90,7 +90,7 @@
       shopInitialized = true
       shopStore.init()
       // Check Z-closure status (cached 5min in sessionStorage)
-      const cacheKey = 'rebond_closure_status'
+      const cacheKey = 'caissette_closure_status'
       const cached = sessionStorage.getItem(cacheKey)
       if (cached) {
         try {
@@ -250,9 +250,9 @@
       <div class="border-b border-gray-800 px-5 py-5">
         <div class="flex items-center gap-2.5">
           <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600">
-            <span class="text-sm font-bold text-white">R</span>
+            <span class="text-sm font-bold text-white">C</span>
           </div>
-          <span class="text-lg font-semibold tracking-tight text-white">Rebond</span>
+          <span class="text-lg font-semibold tracking-tight text-white">Caissette</span>
         </div>
         {#if authStore.user?.name}
           <div class="mt-3 text-xs font-medium text-gray-500">{authStore.user.name}</div>
@@ -393,14 +393,14 @@
               </svg>
               <div class="text-sm text-indigo-800">
                 {#if pwaPlatform === 'ios'}
-                  <span class="font-semibold">Installer Rebond :</span> appuyez sur
+                  <span class="font-semibold">Installer Caissette :</span> appuyez sur
                   <svg class="inline h-4 w-4 align-text-bottom" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 8.25H7.5a2.25 2.25 0 0 0-2.25 2.25v9a2.25 2.25 0 0 0 2.25 2.25h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25H15M9 12l3-3m0 0 3 3m-3-3v12" /></svg>
                   Partager puis <strong>Sur l'ecran d'accueil</strong>
                 {:else if pwaPlatform === 'android'}
-                  <span class="font-semibold">Installer Rebond :</span> appuyez sur le menu
+                  <span class="font-semibold">Installer Caissette :</span> appuyez sur le menu
                   <strong>&#8942;</strong> puis <strong>Installer l'application</strong>
                 {:else}
-                  <span class="font-semibold">Installer Rebond sur votre ordinateur</span> pour un acces rapide et le mode hors-ligne
+                  <span class="font-semibold">Installer Caissette sur votre ordinateur</span> pour un acces rapide et le mode hors-ligne
                 {/if}
               </div>
             </div>

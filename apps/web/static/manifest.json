@@ -1,6 +1,6 @@
 {
-  "name": "Rebond Caisse",
-  "short_name": "Rebond",
+  "name": "Caissette",
+  "short_name": "Caissette",
   "description": "Logiciel de caisse simple et conforme",
   "start_url": "/",
   "display": "standalone",

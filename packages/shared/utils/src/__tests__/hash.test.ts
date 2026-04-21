@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { computeHash, computeChainedHash, genesisHash } from '../hash.js'
-import type { Hash, ShopId } from '@rebond/types'
+import type { Hash, ShopId } from '@caissette/types'
 
 describe('computeHash', () => {
   it('returns a 64-char hex string', async () => {

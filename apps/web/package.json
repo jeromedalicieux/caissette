@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/web",
+  "name": "@caissette/web",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,8 +10,8 @@
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*",
-    "@rebond/utils": "workspace:*",
+    "@caissette/types": "workspace:*",
+    "@caissette/utils": "workspace:*",
     "dexie": "^4.4.2"
   },
   "devDependencies": {

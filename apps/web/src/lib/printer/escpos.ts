@@ -304,7 +304,7 @@ export async function printReceipt(data: ReceiptData): Promise<boolean> {
     .separator()
     // Hash
     .center(data.hash.slice(0, PRINTER_WIDTH))
-    .center('Rebond Caisse v1.0.0')
+    .center('Caissette v1.0.0')
     .cut()
 
   return printer.print()

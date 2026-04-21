@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/utils",
+  "name": "@caissette/utils",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*",
+    "@caissette/types": "workspace:*",
     "zod": "^3.24.0"
   },
   "devDependencies": {

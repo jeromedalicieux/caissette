@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createEventBus } from '@rebond/event-bus'
-import type { EventBus } from '@rebond/event-bus'
-import type { Cents, DepositorId, ItemId, SaleId, ShopId } from '@rebond/types'
+import { createEventBus } from '@caissette/event-bus'
+import type { EventBus } from '@caissette/event-bus'
+import type { Cents, DepositorId, ItemId, SaleId, ShopId } from '@caissette/types'
 
-vi.mock('@rebond/utils', () => ({
+vi.mock('@caissette/utils', () => ({
   generateUuidV7: vi.fn(() => 'mock-uuid'),
   computeChainedHash: vi.fn().mockResolvedValue('mock-hash-value'),
 }))

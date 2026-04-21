@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'rebond_onboarding'
+const STORAGE_KEY = 'caissette_onboarding'
 
 interface OnboardingState {
   welcomed: boolean

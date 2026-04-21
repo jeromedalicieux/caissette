@@ -1,6 +1,6 @@
 import { shops } from '$lib/api/client'
-import type { ShopSettings, ShopDisplay } from '@rebond/types'
-import { DEFAULT_SHOP_SETTINGS, DEFAULT_SHOP_DISPLAY } from '@rebond/types'
+import type { ShopSettings, ShopDisplay } from '@caissette/types'
+import { DEFAULT_SHOP_SETTINGS, DEFAULT_SHOP_DISPLAY } from '@caissette/types'
 
 function createShopStore() {
   let settings = $state<ShopSettings>({
@@ -35,12 +35,12 @@ function createShopStore() {
             display: { ...DEFAULT_SHOP_DISPLAY, ...(shop.settings.display ?? {}) },
           }
           // Cache for offline use
-          localStorage.setItem('rebond_shop_settings', JSON.stringify(settings))
+          localStorage.setItem('caissette_shop_settings', JSON.stringify(settings))
         }
       } catch {
         // Offline — try cached settings
         try {
-          const cached = localStorage.getItem('rebond_shop_settings')
+          const cached = localStorage.getItem('caissette_shop_settings')
           if (cached) {
             const parsed = JSON.parse(cached)
             settings = {

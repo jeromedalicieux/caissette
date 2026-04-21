@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { items, depositors } from '$lib/api/client'
+  import { items, depositors, categoriesApi } from '$lib/api/client'
   import { shopStore } from '$lib/stores/shop.svelte'
   import { onMount } from 'svelte'
   import SectionGuide from '$lib/components/SectionGuide.svelte'
 
   let list = $state<any[]>([])
   let depList = $state<any[]>([])
+  let catList = $state<any[]>([])
   let showForm = $state(false)
   let loading = $state(true)
   let error = $state('')
@@ -27,10 +28,16 @@
   let vatRate = $state(2000)
 
   onMount(async () => {
-    const promises: Promise<void>[] = [loadList()]
+    const promises: Promise<void>[] = [loadList(), loadCategories()]
     if (shopStore.hasDepositSale) promises.push(loadDepositors())
     await Promise.all(promises)
   })
+
+  async function loadCategories() {
+    try {
+      catList = await categoriesApi.list()
+    } catch { /* ignore */ }
+  }
 
   async function loadList() {
     loading = true
@@ -149,7 +156,7 @@
 </script>
 
 <svelte:head>
-  <title>Articles -- Rebond</title>
+  <title>Articles -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">
@@ -229,7 +236,17 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Categorie</label>
-          <input type="text" bind:value={category} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" placeholder="{itemType === 'service' ? 'Reparation, Location...' : 'Vetements, Meubles...'}" />
+          {#if catList.length > 0}
+            <select bind:value={category}
+              class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none">
+              <option value="">-- Aucune --</option>
+              {#each catList as cat}
+                <option value={cat.name}>{cat.name}</option>
+              {/each}
+            </select>
+          {:else}
+            <input type="text" bind:value={category} class="block w-full rounded-lg border border-gray-300 px-3.5 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:outline-none" placeholder="{itemType === 'service' ? 'Reparation, Location...' : 'Vetements, Meubles...'}" />
+          {/if}
         </div>
         {#if itemType !== 'service'}
           <div>

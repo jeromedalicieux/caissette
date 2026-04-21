@@ -40,12 +40,12 @@ export interface CachedItem {
   data: string // full JSON of the item for any other fields
 }
 
-class RebondOfflineDB extends Dexie {
+class CaissetteOfflineDB extends Dexie {
   pendingSales!: Table<PendingSale>
   cachedItems!: Table<CachedItem>
 
   constructor() {
-    super('rebond-offline')
+    super('caissette-offline')
     this.version(1).stores({
       pendingSales: '++id, tempId, status, createdAt',
     })
@@ -56,4 +56,4 @@ class RebondOfflineDB extends Dexie {
   }
 }
 
-export const offlineDb = new RebondOfflineDB()
+export const offlineDb = new CaissetteOfflineDB()

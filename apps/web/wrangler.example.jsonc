@@ -1,5 +1,5 @@
 {
-  "name": "rebond-web",
+  "name": "caissette-web",
   "compatibility_date": "2025-01-15",
   "compatibility_flags": ["nodejs_compat"],
   "pages_build_output_dir": ".svelte-kit/cloudflare"

@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/caisse",
+  "name": "@caissette/caisse",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,10 +10,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*",
-    "@rebond/utils": "workspace:*",
-    "@rebond/event-bus": "workspace:*",
-    "@rebond/tva-marge": "workspace:*",
+    "@caissette/types": "workspace:*",
+    "@caissette/utils": "workspace:*",
+    "@caissette/event-bus": "workspace:*",
+    "@caissette/tva-marge": "workspace:*",
     "drizzle-orm": "^0.39.0",
     "hono": "^4.7.0",
     "zod": "^3.24.0"

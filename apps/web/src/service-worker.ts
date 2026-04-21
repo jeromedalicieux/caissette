@@ -3,8 +3,8 @@
 
 import { build, files, version } from '$service-worker'
 
-const CACHE_NAME = `rebond-cache-${version}`
-const API_CACHE = `rebond-api-${version}`
+const CACHE_NAME = `caissette-cache-${version}`
+const API_CACHE = `caissette-api-${version}`
 
 const ASSETS = [...build, ...files]
 

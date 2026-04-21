@@ -159,7 +159,7 @@
 </script>
 
 <svelte:head>
-  <title>Utilisateurs -- Rebond</title>
+  <title>Utilisateurs -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">

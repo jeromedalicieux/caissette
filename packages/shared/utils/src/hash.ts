@@ -1,4 +1,4 @@
-import type { Hash, ShopId } from '@rebond/types'
+import type { Hash, ShopId } from '@caissette/types'
 
 /**
  * Genesis hash for the first record in a chain.

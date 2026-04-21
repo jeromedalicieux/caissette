@@ -1,0 +1,124 @@
+---
+interface Props {
+  title: string
+  description: string
+  canonical?: string
+}
+
+const { title, description, canonical } = Astro.props
+const canonicalUrl = canonical || Astro.url.href
+---
+
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{title}</title>
+  <meta name="description" content={description} />
+  <link rel="canonical" href={canonicalUrl} />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content={title} />
+  <meta property="og:description" content={description} />
+  <meta property="og:url" content={canonicalUrl} />
+  <meta property="og:site_name" content="Caissette" />
+  <meta property="og:locale" content="fr_FR" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={title} />
+  <meta name="twitter:description" content={description} />
+
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <style is:global>
+    @import '../styles/global.css';
+  </style>
+
+  <!-- Schema.org -->
+  <script type="application/ld+json" set:html={JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Caissette",
+    "applicationCategory": "BusinessApplication",
+    "operatingSystem": "Web",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "EUR"
+    },
+    "description": "Logiciel de caisse open source, eco-responsable, certifie NF525. Made in France.",
+    "url": "https://caissette.fr",
+    "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+    "creator": {
+      "@type": "Organization",
+      "name": "Caissette",
+      "url": "https://caissette.fr",
+      "address": {
+        "@type": "PostalAddress",
+        "addressCountry": "FR"
+      }
+    }
+  })} />
+</head>
+<body class="bg-white text-gray-900 antialiased">
+  <nav class="border-b border-gray-100">
+    <div class="mx-auto max-w-5xl flex items-center justify-between px-6 py-4">
+      <a href="/" class="text-xl font-bold tracking-tight">Caissette</a>
+      <div class="hidden sm:flex items-center gap-6 text-sm font-medium text-gray-600">
+        <a href="/fonctionnalites" class="hover:text-gray-900 transition-colors">Fonctionnalites</a>
+        <a href="/tarifs" class="hover:text-gray-900 transition-colors">Tarifs</a>
+        <a href="/conformite-nf525" class="hover:text-gray-900 transition-colors">Conformite NF525</a>
+        <a href="/blog" class="hover:text-gray-900 transition-colors">Blog</a>
+        <a href="https://github.com/caissette/caissette" class="hover:text-gray-900 transition-colors" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <a href="https://app.caissette.fr" class="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 transition-colors">Essayer</a>
+    </div>
+  </nav>
+
+  <main>
+    <slot />
+  </main>
+
+  <footer class="border-t border-gray-100 mt-24">
+    <div class="mx-auto max-w-5xl px-6 py-12">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-8 text-sm">
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-3">Produit</h3>
+          <ul class="space-y-2 text-gray-500">
+            <li><a href="/fonctionnalites" class="hover:text-gray-900">Fonctionnalites</a></li>
+            <li><a href="/tarifs" class="hover:text-gray-900">Tarifs</a></li>
+            <li><a href="/conformite-nf525" class="hover:text-gray-900">Conformite NF525</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-3">Ressources</h3>
+          <ul class="space-y-2 text-gray-500">
+            <li><a href="/blog" class="hover:text-gray-900">Blog</a></li>
+            <li><a href="https://github.com/caissette/caissette" class="hover:text-gray-900" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/caissette/caissette/blob/main/CONTRIBUTING.md" class="hover:text-gray-900" target="_blank" rel="noopener">Contribuer</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-3">Legal</h3>
+          <ul class="space-y-2 text-gray-500">
+            <li><a href="/mentions-legales" class="hover:text-gray-900">Mentions legales</a></li>
+            <li><a href="/confidentialite" class="hover:text-gray-900">Confidentialite</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900 mb-3">Made in France</h3>
+          <p class="text-gray-500">Concu et developpe en France. Heberge sur le reseau Cloudflare.</p>
+          <p class="mt-2 text-gray-400">Open source — AGPL-3.0</p>
+        </div>
+      </div>
+      <div class="mt-10 pt-6 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+        <p>Caissette — Logiciel de caisse open source</p>
+        <p>Fait avec soin en France</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/audit-log",
+  "name": "@caissette/audit-log",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*",
-    "@rebond/utils": "workspace:*",
-    "@rebond/event-bus": "workspace:*",
+    "@caissette/types": "workspace:*",
+    "@caissette/utils": "workspace:*",
+    "@caissette/event-bus": "workspace:*",
     "drizzle-orm": "^0.39.0"
   },
   "devDependencies": {

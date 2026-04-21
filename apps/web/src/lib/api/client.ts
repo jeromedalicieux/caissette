@@ -1,4 +1,4 @@
-import type { Shop, ShopSettings } from '@rebond/types'
+import type { Shop, ShopSettings } from '@caissette/types'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8787'
 
@@ -7,16 +7,16 @@ let authToken: string | null = null
 export function setAuthToken(token: string | null) {
   authToken = token
   if (token) {
-    localStorage.setItem('rebond_token', token)
+    localStorage.setItem('caissette_token', token)
   } else {
-    localStorage.removeItem('rebond_token')
+    localStorage.removeItem('caissette_token')
   }
 }
 
 export function getAuthToken(): string | null {
   if (authToken) return authToken
   if (typeof localStorage !== 'undefined') {
-    authToken = localStorage.getItem('rebond_token')
+    authToken = localStorage.getItem('caissette_token')
   }
   return authToken
 }

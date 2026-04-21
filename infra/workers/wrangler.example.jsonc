@@ -1,0 +1,27 @@
+{
+  "name": "caissette-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-01-15",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // D1 Database — create via: wrangler d1 create caissette-db
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "caissette-db",
+      "database_id": "YOUR_D1_DATABASE_ID"
+    }
+  ],
+
+  // KV Namespace — create via: wrangler kv namespace create KV
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "YOUR_KV_NAMESPACE_ID"
+    }
+  ]
+
+  // Ed25519 signing key for closures (set via: wrangler secret put SIGNING_KEY)
+  // Generate key pair: openssl genpkey -algorithm Ed25519 -out ed25519_private.pem
+  // Extract base64: openssl pkey -in ed25519_private.pem -outform DER | base64
+}

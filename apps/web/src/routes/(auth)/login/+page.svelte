@@ -10,11 +10,11 @@
   let shopName = $state('')
   let siret = $state('')
   let address = $state('')
-  let shopId = $state(localStorage.getItem('rebond_shop_id') ?? '')
+  let shopId = $state(localStorage.getItem('caissette_shop_id') ?? '')
 
   function fillDemo() {
     shopId = '019da569-12d6-7a98-b5df-2f1efbc14f1c'
-    email = 'demo@rebond.fr'
+    email = 'demo@caissette.fr'
     password = 'demo1234'
     mode = 'login'
     error = ''
@@ -54,7 +54,7 @@
     try {
       const shop = await shops.create({ name: shopName, siret, address })
       shopId = shop.id
-      localStorage.setItem('rebond_shop_id', shop.id)
+      localStorage.setItem('caissette_shop_id', shop.id)
       await authStore.register(name, email, password, shop.id)
       goto('/dashboard')
     } catch (e: any) {
@@ -78,7 +78,7 @@
 </script>
 
 <svelte:head>
-  <title>Connexion — Rebond</title>
+  <title>Connexion — Caissette</title>
 </svelte:head>
 
 <main class="flex min-h-screen">
@@ -91,10 +91,10 @@
     <div class="relative">
       <div class="flex items-center gap-3">
         <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/15 backdrop-blur-sm">
-          <span class="text-xl font-bold">R</span>
+          <span class="text-xl font-bold">C</span>
         </div>
         <div>
-          <h1 class="text-3xl font-bold tracking-tight">Rebond</h1>
+          <h1 class="text-3xl font-bold tracking-tight">Caissette</h1>
           <p class="text-sm text-blue-200">Logiciel de caisse simple et conforme</p>
         </div>
       </div>
@@ -116,14 +116,14 @@
       {/each}
     </div>
 
-    <p class="relative text-xs text-blue-300/60">Rebond — Caisse certifiee NF525</p>
+    <p class="relative text-xs text-blue-300/60">Caissette — Caisse certifiee NF525</p>
   </div>
 
   <!-- Form panel -->
   <div class="flex w-full flex-col items-center justify-center bg-white px-6 py-12 lg:w-1/2 xl:w-[45%]">
     <!-- Mobile-only brand header -->
     <div class="mb-8 text-center lg:hidden">
-      <h1 class="text-3xl font-bold text-gray-900">Rebond</h1>
+      <h1 class="text-3xl font-bold text-gray-900">Caissette</h1>
       <p class="mt-1 text-sm text-gray-500">Logiciel de caisse simple et conforme</p>
     </div>
 

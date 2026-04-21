@@ -77,7 +77,7 @@
 </script>
 
 <svelte:head>
-  <title>Journal de caisse -- Rebond</title>
+  <title>Journal de caisse -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">

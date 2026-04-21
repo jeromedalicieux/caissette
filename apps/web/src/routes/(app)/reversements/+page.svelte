@@ -118,7 +118,7 @@
 </script>
 
 <svelte:head>
-  <title>Reversements — Rebond</title>
+  <title>Reversements — Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">

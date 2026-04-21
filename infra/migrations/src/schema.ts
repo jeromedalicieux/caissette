@@ -33,6 +33,8 @@ export const users = sqliteTable(
     role: text('role').notNull(),
     pinHash: text('pin_hash'),
     passwordHash: text('password_hash').notNull(),
+    active: integer('active').notNull().default(1),
+    permissionsJson: text('permissions_json'),
     createdAt: integer('created_at').notNull(),
     lastLoginAt: integer('last_login_at'),
   },
@@ -150,6 +152,7 @@ export const items = sqliteTable(
     name: text('name').notNull(),
     description: text('description'),
     category: text('category'),
+    categoryId: text('category_id'),
     brand: text('brand'),
     size: text('size'),
     condition: text('condition'),
@@ -253,6 +256,44 @@ export const reversements = sqliteTable(
   (table) => [
     index('idx_reversements_shop').on(table.shopId),
     index('idx_reversements_depositor').on(table.depositorId),
+  ],
+)
+
+// ─── Module: categories ───
+export const categories = sqliteTable(
+  'categories',
+  {
+    id: text('id').primaryKey(),
+    shopId: text('shop_id').notNull(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull(),
+    color: text('color'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    active: integer('active').notNull().default(1),
+    showInFilters: integer('show_in_filters').notNull().default(1),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('idx_categories_shop_slug').on(table.shopId, table.slug),
+    index('idx_categories_shop_sort').on(table.shopId, table.sortOrder),
+  ],
+)
+
+// ─── Module: cash_movements ───
+export const cashMovements = sqliteTable(
+  'cash_movements',
+  {
+    id: text('id').primaryKey(),
+    shopId: text('shop_id').notNull(),
+    userId: text('user_id').notNull(),
+    type: text('type').notNull(),
+    amount: integer('amount').notNull(),
+    note: text('note'),
+    recordedAt: integer('recorded_at').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    index('idx_cash_movements_shop_date').on(table.shopId, table.recordedAt),
   ],
 )
 

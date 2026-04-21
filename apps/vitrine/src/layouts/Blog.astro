@@ -1,0 +1,28 @@
+---
+import Base from './Base.astro'
+
+interface Props {
+  title: string
+  description: string
+  date: string
+  author?: string
+}
+
+const { title, description, date, author = 'Caissette' } = Astro.props
+---
+
+<Base title={`${title} — Blog Caissette`} description={description}>
+  <article class="mx-auto max-w-3xl px-6 py-16">
+    <header class="mb-10">
+      <p class="text-sm text-gray-500 mb-2">{new Date(date).toLocaleDateString('fr-FR', { dateStyle: 'long' })} — {author}</p>
+      <h1 class="text-3xl sm:text-4xl font-bold tracking-tight text-gray-900">{title}</h1>
+      <p class="mt-4 text-lg text-gray-600">{description}</p>
+    </header>
+    <div class="prose prose-gray max-w-none prose-headings:font-semibold prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline">
+      <slot />
+    </div>
+    <footer class="mt-16 pt-8 border-t border-gray-100">
+      <a href="/blog" class="text-sm font-medium text-gray-600 hover:text-gray-900">&larr; Retour au blog</a>
+    </footer>
+  </article>
+</Base>

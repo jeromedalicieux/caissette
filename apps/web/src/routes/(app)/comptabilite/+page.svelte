@@ -76,7 +76,7 @@
 </script>
 
 <svelte:head>
-  <title>Comptabilite — Rebond</title>
+  <title>Comptabilite — Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">

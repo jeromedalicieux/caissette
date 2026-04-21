@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://caissette.fr/sitemap-index.xml

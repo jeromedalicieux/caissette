@@ -1,0 +1,96 @@
+---
+import Blog from '../../layouts/Blog.astro'
+---
+
+<Blog
+  title="Quel logiciel de caisse pour un petit commerce ?"
+  description="Comparatif des solutions de caisse pour les petits commerces : criteres de choix, prix, conformite, et pourquoi l'open source change la donne."
+  date="2026-04-21"
+>
+  <p>Choisir un logiciel de caisse pour son petit commerce n'est pas simple. Entre les solutions proprietaires couteuses, les terminaux tout-en-un et les applications web, l'offre est vaste. Voici les criteres essentiels et un comparatif honnete.</p>
+
+  <h2>Les criteres essentiels</h2>
+
+  <h3>1. Certification NF525</h3>
+  <p>C'est non-negociable. Depuis 2018, tout logiciel de caisse en France doit etre <a href="/blog/certification-nf525-guide">certifie NF525</a>. Sans certification, vous risquez 7 500 EUR d'amende.</p>
+
+  <h3>2. Prix et engagement</h3>
+  <p>Les solutions proprietaires facturent generalement entre <strong>30 et 100 EUR/mois</strong>, souvent avec un engagement de 12 ou 24 mois. Attention aux frais caches : installation, formation, materiel impose.</p>
+
+  <h3>3. Dependance materielle</h3>
+  <p>Certaines solutions imposent du materiel specifique (iPad, terminal proprietaire, tiroir-caisse connecte). Ca augmente le cout et cree une dependance au fournisseur.</p>
+
+  <h3>4. Mode hors-ligne</h3>
+  <p>Si votre connexion internet tombe, pouvez-vous continuer a encaisser ? C'est crucial pour un commerce physique.</p>
+
+  <h3>5. Export des donnees</h3>
+  <p>Pouvez-vous recuperer vos donnees facilement si vous changez de solution ? Attention au lock-in.</p>
+
+  <h2>Les solutions du marche</h2>
+
+  <h3>SumUp</h3>
+  <p>Terminal de paiement avec une app de caisse basique. Simple et pas cher pour demarrer, mais fonctionnalites limitees pour un commerce avec un catalogue important.</p>
+
+  <h3>Zettle (PayPal)</h3>
+  <p>Similaire a SumUp. Application gratuite, terminal de paiement a l'achat. Correct pour un petit volume.</p>
+
+  <h3>Henrri (JDC)</h3>
+  <p>Logiciel gratuit du fabricant de caisses enregistreuses JDC. Interface web correcte, mais pas open source et fonctionnalites depot-vente absentes.</p>
+
+  <h3>Lightspeed, Hiboutik, EBP...</h3>
+  <p>Solutions plus completes mais plus cheres (40 a 100+ EUR/mois). Souvent surdimensionnees pour un petit commerce.</p>
+
+  <h2>L'alternative open source : Caissette</h2>
+  <p><a href="https://caissette.fr">Caissette</a> propose une approche differente :</p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Critere</th>
+        <th>Solutions classiques</th>
+        <th>Caissette</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Prix</td>
+        <td>30-100 EUR/mois</td>
+        <td>0 EUR (self-hosted) ou 19 EUR/mois</td>
+      </tr>
+      <tr>
+        <td>Engagement</td>
+        <td>12-24 mois</td>
+        <td>Sans engagement</td>
+      </tr>
+      <tr>
+        <td>Code source</td>
+        <td>Ferme (boite noire)</td>
+        <td>Ouvert (AGPL-3.0)</td>
+      </tr>
+      <tr>
+        <td>Materiel</td>
+        <td>Souvent impose</td>
+        <td>N'importe quel navigateur</td>
+      </tr>
+      <tr>
+        <td>Hors-ligne</td>
+        <td>Rarement</td>
+        <td>Oui (PWA)</td>
+      </tr>
+      <tr>
+        <td>Depot-vente</td>
+        <td>Rarement</td>
+        <td>Module integre</td>
+      </tr>
+      <tr>
+        <td>Lock-in</td>
+        <td>Fort</td>
+        <td>Zero (donnees exportables)</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Notre recommandation</h2>
+  <p>Pour un petit commerce, l'essentiel est d'avoir un logiciel <strong>certifie, simple, et pas cher</strong>. Si vous etes a l'aise avec la technique, le self-hosted gratuit est imbattable. Sinon, un service manage a 19 EUR/mois sans engagement reste bien en dessous de la concurrence.</p>
+  <p>Et si demain vous voulez changer de solution, vos donnees vous appartiennent et sont exportables. C'est ca, l'avantage de l'open source.</p>
+</Blog>

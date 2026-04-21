@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/testing",
+  "name": "@caissette/testing",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*"
+    "@caissette/types": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

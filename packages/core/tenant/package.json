@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/tenant",
+  "name": "@caissette/tenant",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*",
-    "@rebond/utils": "workspace:*",
+    "@caissette/types": "workspace:*",
+    "@caissette/utils": "workspace:*",
     "drizzle-orm": "^0.39.0",
     "hono": "^4.7.0",
     "zod": "^3.24.0"

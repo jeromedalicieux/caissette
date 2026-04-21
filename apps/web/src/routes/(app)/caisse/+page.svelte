@@ -97,14 +97,14 @@
 
   onMount(() => {
     try {
-      const fav = localStorage.getItem('rebond_favorites')
+      const fav = localStorage.getItem('caissette_favorites')
       if (fav) favorites = new Set(JSON.parse(fav))
-      const usage = localStorage.getItem('rebond_usage')
+      const usage = localStorage.getItem('caissette_usage')
       if (usage) usageCount = JSON.parse(usage)
-      const savedView = localStorage.getItem('rebond_view_mode')
+      const savedView = localStorage.getItem('caissette_view_mode')
       if (savedView && ['grid', 'list', 'tiles'].includes(savedView)) viewMode = savedView as any
       // Load cash float for today (localStorage first, then API upgrade)
-      const floatData = localStorage.getItem(`rebond_cash_float_${todayKey}`)
+      const floatData = localStorage.getItem(`caissette_cash_float_${todayKey}`)
       if (floatData) cashFloat = parseInt(floatData)
     } catch { /* ignore */ }
 
@@ -175,7 +175,7 @@
       await cashMovementsApi.create({ type: 'opening_float', amount: cashFloat })
     } catch {
       // Fallback to localStorage if offline
-      localStorage.setItem(`rebond_cash_float_${todayKey}`, String(cashFloat))
+      localStorage.setItem(`caissette_cash_float_${todayKey}`, String(cashFloat))
     }
     showCashFloat = false
     cashFloatInput = ''
@@ -189,7 +189,7 @@
   })
 
   function saveFavorites() {
-    localStorage.setItem('rebond_favorites', JSON.stringify([...favorites]))
+    localStorage.setItem('caissette_favorites', JSON.stringify([...favorites]))
   }
 
   function toggleFavorite(e: Event, itemId: string) {
@@ -206,7 +206,7 @@
   function trackUsage(itemId: string) {
     usageCount[itemId] = (usageCount[itemId] ?? 0) + 1
     usageCount = { ...usageCount }
-    localStorage.setItem('rebond_usage', JSON.stringify(usageCount))
+    localStorage.setItem('caissette_usage', JSON.stringify(usageCount))
   }
 
   async function loadItems() {
@@ -215,7 +215,7 @@
     try {
       availableItems = await items.list('available')
       refreshItemsCache()
-      localStorage.setItem('rebond_cache_refresh', String(Date.now()))
+      localStorage.setItem('caissette_cache_refresh', String(Date.now()))
     } catch (e: any) {
       try {
         const cached = await getCachedItems()
@@ -418,7 +418,7 @@
           ? payments.filter(p => p.method === 'cash').reduce((s, p) => s + p.amount, 0)
           : totalPaid
         cashFloat += cashAmount
-        localStorage.setItem(`rebond_cash_float_${todayKey}`, String(cashFloat))
+        localStorage.setItem(`caissette_cash_float_${todayKey}`, String(cashFloat))
       }
 
       // Show change modal for cash payments
@@ -432,7 +432,7 @@
       useMultiPayment = false
 
       // Ticket impression opt-in (decret 2023)
-      const autoPrint = localStorage.getItem('rebond_auto_print') === '1'
+      const autoPrint = localStorage.getItem('caissette_auto_print') === '1'
       if (autoPrint && lastSaleId) {
         printLastReceipt()
       } else if (lastSaleId) {
@@ -512,7 +512,7 @@
 </script>
 
 <svelte:head>
-  <title>Caisse — Rebond</title>
+  <title>Caisse — Caissette</title>
 </svelte:head>
 
 <div class="flex h-[calc(100vh)] flex-col md:flex-row">
@@ -596,7 +596,7 @@
         </div>
         <div class="flex rounded-lg bg-white ring-1 ring-gray-200 overflow-hidden">
           <button
-            onclick={() => { viewMode = 'grid'; localStorage.setItem('rebond_view_mode', 'grid') }}
+            onclick={() => { viewMode = 'grid'; localStorage.setItem('caissette_view_mode', 'grid') }}
             class="p-1.5 transition-colors {viewMode === 'grid' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-600'}"
             title="Grille"
           >
@@ -605,7 +605,7 @@
             </svg>
           </button>
           <button
-            onclick={() => { viewMode = 'list'; localStorage.setItem('rebond_view_mode', 'list') }}
+            onclick={() => { viewMode = 'list'; localStorage.setItem('caissette_view_mode', 'list') }}
             class="p-1.5 transition-colors {viewMode === 'list' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-600'}"
             title="Liste"
           >
@@ -614,7 +614,7 @@
             </svg>
           </button>
           <button
-            onclick={() => { viewMode = 'tiles'; localStorage.setItem('rebond_view_mode', 'tiles') }}
+            onclick={() => { viewMode = 'tiles'; localStorage.setItem('caissette_view_mode', 'tiles') }}
             class="p-1.5 transition-colors {viewMode === 'tiles' ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-600'}"
             title="Grandes tuiles"
           >
@@ -836,7 +836,7 @@
             OK
           </button>
           {#if cashFloat > 0}
-            <button onclick={() => { cashFloat = 0; localStorage.removeItem(`rebond_cash_float_${todayKey}`); showCashFloat = false }}
+            <button onclick={() => { cashFloat = 0; localStorage.removeItem(`caissette_cash_float_${todayKey}`); showCashFloat = false }}
               class="rounded-lg bg-gray-100 px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-200" title="Remettre a zero">
               RAZ
             </button>

@@ -12,6 +12,7 @@ export const items = sqliteTable(
     name: text('name').notNull(),
     description: text('description'),
     category: text('category'),
+    categoryId: text('category_id'),
     brand: text('brand'),
     size: text('size'),
     condition: text('condition'),

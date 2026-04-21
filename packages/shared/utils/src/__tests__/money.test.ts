@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { bankersRound, centsToEuros, eurosToCents } from '../money.js'
-import type { Cents } from '@rebond/types'
+import type { Cents } from '@caissette/types'
 
 describe('bankersRound', () => {
   it('rounds down when below .5', () => {

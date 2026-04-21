@@ -1,4 +1,4 @@
-import { type Bps, type Cents, cents } from '@rebond/types'
+import { type Bps, type Cents, cents } from '@caissette/types'
 
 /**
  * Banker's rounding (round half to even).

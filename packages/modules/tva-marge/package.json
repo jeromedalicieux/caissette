@@ -1,5 +1,5 @@
 {
-  "name": "@rebond/tva-marge",
+  "name": "@caissette/tva-marge",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "test:unit": "vitest run --coverage"
   },
   "dependencies": {
-    "@rebond/types": "workspace:*",
-    "@rebond/utils": "workspace:*",
+    "@caissette/types": "workspace:*",
+    "@caissette/utils": "workspace:*",
     "zod": "^3.24.0"
   },
   "devDependencies": {

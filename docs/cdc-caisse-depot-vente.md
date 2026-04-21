@@ -1,6 +1,6 @@
 # Cahier des charges — Logiciel de caisse SaaS pour dépôt-vente
 
-> **Nom de code projet :** Rebond *(à valider, vérifier disponibilité domaines .fr / .com et INPI classe 9 + 42)*
+> **Nom de code projet :** Caissette *(à valider, vérifier disponibilité domaines .fr / .com et INPI classe 9 + 42)*
 > **Statut :** Spécification v0.2 — conformité & tests renforcés
 > **Auteur :** Jerome Dalicieux (Daidyl)
 > **Date :** Avril 2026
@@ -143,7 +143,7 @@ Le régime TVA sur marge s'applique si :
 - Le dépositaire vend en son nom propre pour le compte du déposant.
 - Il est réputé acheter au déposant puis revendre au client final.
 - **Base TVA = commission perçue** (différence entre prix encaissé et prix reversé).
-- Configuration par défaut dans Rebond (la plus courante en pratique).
+- Configuration par défaut dans Caissette (la plus courante en pratique).
 
 **Régime 2 — Intermédiaire transparent (courtier, art. 256 V-I) :**
 - Le dépositaire est clairement identifié comme intermédiaire, le déposant reste vendeur.
@@ -205,7 +205,7 @@ Chaque ligne `sale_items` porte son propre `vat_regime` et `vat_rate`. Le total 
 
 **Contenu obligatoire (décret n° 88-1040 du 14 novembre 1988) :**
 
-| Champ | Description | Source Rebond |
+| Champ | Description | Source Caissette |
 |---|---|---|
 | Numéro d'ordre | Continue, ininterrompue | `police_ledger.entry_number` (séquence par shop) |
 | Date d'entrée | Jour de la remise | `police_ledger.recorded_at` |
@@ -251,7 +251,7 @@ Chaque ligne `sale_items` porte son propre `vat_regime` et `vat_rate`. Le total 
 - Mode de paiement (« Espèces », « Carte bancaire », etc.).
 - Si TVA sur marge : mention **« TVA calculée sur marge, art. 297 A du CGI »** (ou équivalent explicite).
 - Si régime normal : détail TVA par taux, HT, TTC.
-- Mention éditeur logiciel (recommandé, pas obligatoire) : « Logiciel Rebond – Attestation disponible sur demande ».
+- Mention éditeur logiciel (recommandé, pas obligatoire) : « Logiciel Caissette – Attestation disponible sur demande ».
 
 **Non obligatoire mais recommandé :**
 - QR code renvoyant vers une preuve d'authenticité en ligne.
@@ -319,7 +319,7 @@ Chaque ligne `sale_items` porte son propre `vat_regime` et `vat_rate`. Le total 
 | Données personnelles déposants | Durée relation + 3 ans | CNIL |
 | Contrats de dépôt | 5 ans après fin contrat | Prescription contractuelle |
 
-**Stratégie Rebond :**
+**Stratégie Caissette :**
 - **10 ans** minimum par défaut sur toutes les données ISCA (couvre la durée la plus longue).
 - Archivage automatique dans R2 Archive class après 12 mois.
 - Suppression automatique à 10 ans + 1 an de grâce (11 ans), sauf opposition client.
@@ -421,7 +421,7 @@ Chaque obligation réglementaire se traduit en **test automatisé** :
 ┌─────────────────────────────────────────────────────────────┐
 │                    Tablette / PC / Mac                      │
 │  ┌───────────────────────────────────────────────────────┐  │
-│  │  PWA Rebond (SvelteKit | Remix)                       │  │
+│  │  PWA Caissette (SvelteKit | Remix)                       │  │
 │  │  ├─ Service Worker (cache + offline)                  │  │
 │  │  ├─ IndexedDB (articles, déposants, queue sync)       │  │
 │  │  └─ UI modulaire (îlots par feature)                  │  │
@@ -1046,7 +1046,7 @@ Le premier enregistrement utilise `hash(-1) = SHA-256("<shop_id>:genesis")`.
 
 ### 8.7 Emails
 
-- **Resend** : transactionnels (templates React Email, domaine custom `noreply@rebond.fr`).
+- **Resend** : transactionnels (templates React Email, domaine custom `noreply@caissette.fr`).
 
 ### 8.8 CI/CD
 
@@ -1133,7 +1133,7 @@ Le premier enregistrement utilise `hash(-1) = SHA-256("<shop_id>:genesis")`.
 
 ### 10.2 API externe (REST)
 
-- Base : `https://api.rebond.fr/v1/`
+- Base : `https://api.caissette.fr/v1/`
 - Authentification : API keys scopées par tenant + permissions granulaires.
 - Rate limiting : 100 req/min par défaut, up à 1000 sur plan Pro.
 
@@ -1235,7 +1235,7 @@ Un connecteur est un module qui :
 - Connecteur `printer-escpos` (impression ticket).
 - UI web minimale, pas encore optimisée tablette.
 - **Pas encore de Stripe Terminal** — caisse cash/chèque/CB manuelle uniquement.
-- Déploiement sur `app-preview.rebond.fr`.
+- Déploiement sur `app-preview.caissette.fr`.
 
 **Critère de sortie :** Jerome peut faire une vente de bout en bout pour son client test.
 
@@ -1251,8 +1251,8 @@ Un connecteur est un module qui :
 - UI optimisée tablette (iPad + Android).
 - Back-office admin avec génération attestations ISCA.
 - Onboarding guidé (wizard 5 étapes).
-- Documentation utilisateur (Astro, sur `docs.rebond.fr`).
-- Déploiement prod sur `app.rebond.fr`.
+- Documentation utilisateur (Astro, sur `docs.caissette.fr`).
+- Déploiement prod sur `app.caissette.fr`.
 
 **Critère de sortie :** 1er pilote en caisse réelle, 1 semaine de tests live sans bug bloquant.
 
@@ -2065,9 +2065,9 @@ jobs:
 ### 14.1 Environnements
 
 - `local` : Miniflare + D1 local + R2 émulé (Wrangler dev).
-- `preview` : déploiement automatique par PR sur `*.rebond-preview.dev`.
-- `staging` : `staging.rebond.fr`, base D1 séparée, Stripe test mode.
-- `production` : `app.rebond.fr`, base D1 prod, Stripe live.
+- `preview` : déploiement automatique par PR sur `*.caissette-preview.dev`.
+- `staging` : `staging.caissette.fr`, base D1 séparée, Stripe test mode.
+- `production` : `app.caissette.fr`, base D1 prod, Stripe live.
 
 ### 14.2 Migrations DB
 
@@ -2198,7 +2198,7 @@ Q2-Q4 2027
 - Le budget pentest (~3-5k€) est intégré à la roadmap avant phase 3.
 - Jerome tient l'astreinte samedi/dimanche au moins 1 an (phase critique pour réputation).
 - Le support est mutualisé avec le SaaS Swello/Peako si lancé en parallèle.
-- Le nom « Rebond » est disponible commercialement — sinon candidats : Consign, Stellair, Dépôt+, ReMarket, Tock (à vérifier INPI).
+- Le nom « Caissette » est disponible commercialement — sinon candidats : Consign, Stellair, Dépôt+, ReMarket, Tock (à vérifier INPI).
 
 **Questions ouvertes :**
 - Faut-il un mode « vente directe » sans déposant (pour les commerces hybrides qui achètent aussi du stock) dès le MVP ou seulement en v1 ? → recommandation : dès MVP car cas fréquent.

@@ -91,7 +91,7 @@
 </script>
 
 <svelte:head>
-  <title>Deposants -- Rebond</title>
+  <title>Deposants -- Caissette</title>
 </svelte:head>
 
 <div class="p-6 lg:p-8">

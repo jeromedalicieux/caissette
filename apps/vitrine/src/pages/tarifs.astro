@@ -1,0 +1,82 @@
+---
+import Base from '../layouts/Base.astro'
+---
+
+<Base
+  title="Tarifs — Caissette, logiciel de caisse gratuit et open source"
+  description="Caissette est gratuit en self-hosted. Service d'hebergement manage disponible pour ceux qui preferent ne pas gerer l'infrastructure."
+>
+  <section class="mx-auto max-w-5xl px-6 py-20">
+    <h1 class="text-4xl font-bold text-gray-900 text-center">Tarifs simples et transparents</h1>
+    <p class="mt-4 text-center text-gray-600 max-w-2xl mx-auto">Le logiciel est gratuit. Vous ne payez que si vous voulez qu'on s'occupe de l'hebergement pour vous.</p>
+
+    <div class="mt-16 grid sm:grid-cols-2 gap-8 max-w-3xl mx-auto">
+      <!-- Self-hosted -->
+      <div class="rounded-2xl border-2 border-gray-200 p-8">
+        <h2 class="text-xl font-bold text-gray-900">Self-hosted</h2>
+        <div class="mt-4">
+          <span class="text-4xl font-bold text-gray-900">0 &euro;</span>
+          <span class="text-gray-500">/mois</span>
+        </div>
+        <p class="mt-3 text-sm text-gray-600">Vous hebergez vous-meme sur votre compte Cloudflare.</p>
+        <ul class="mt-6 space-y-3 text-sm text-gray-600">
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Toutes les fonctionnalites</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Certification NF525 incluse</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Mises a jour via git</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Communaute GitHub</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Pas de limite d'utilisation</li>
+          <li class="flex gap-2"><span class="text-gray-400">—</span> Support communautaire uniquement</li>
+        </ul>
+        <a href="https://github.com/caissette/caissette" class="mt-8 block text-center rounded-lg bg-white px-6 py-3 text-sm font-semibold text-gray-700 ring-1 ring-gray-200 hover:bg-gray-50 transition-colors" target="_blank" rel="noopener">
+          Voir sur GitHub
+        </a>
+      </div>
+
+      <!-- Manage -->
+      <div class="rounded-2xl border-2 border-gray-900 p-8 relative">
+        <div class="absolute -top-3 left-6 bg-gray-900 text-white text-xs font-semibold px-3 py-1 rounded-full">Recommande</div>
+        <h2 class="text-xl font-bold text-gray-900">Service manage</h2>
+        <div class="mt-4">
+          <span class="text-4xl font-bold text-gray-900">19 &euro;</span>
+          <span class="text-gray-500">/mois</span>
+        </div>
+        <p class="mt-3 text-sm text-gray-600">On s'occupe de tout. Vous n'avez qu'a vendre.</p>
+        <ul class="mt-6 space-y-3 text-sm text-gray-600">
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Toutes les fonctionnalites</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Certification NF525 incluse</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Hebergement et maintenance</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Mises a jour automatiques</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Sauvegardes quotidiennes</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Support prioritaire par email</li>
+          <li class="flex gap-2"><span class="text-green-600 font-bold">&#10003;</span> Installation et configuration</li>
+        </ul>
+        <a href="https://app.caissette.fr" class="mt-8 block text-center rounded-lg bg-gray-900 px-6 py-3 text-sm font-semibold text-white hover:bg-gray-800 transition-colors">
+          Essayer gratuitement
+        </a>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="mt-20 max-w-3xl mx-auto">
+      <h2 class="text-2xl font-bold text-gray-900 text-center mb-10">Questions frequentes</h2>
+      <div class="space-y-6">
+        <div>
+          <h3 class="font-semibold text-gray-900">Le self-hosted est-il vraiment gratuit ?</h3>
+          <p class="mt-2 text-sm text-gray-600">Oui. Le logiciel est open source (AGPL-3.0). Vous payez uniquement les ressources Cloudflare, qui restent dans le tier gratuit pour un usage normal (100 000 requetes/jour, 5 millions de lectures D1/jour).</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900">Qu'est-ce qui est inclus dans le service manage ?</h3>
+          <p class="mt-2 text-sm text-gray-600">L'hebergement sur notre infrastructure Cloudflare, les mises a jour automatiques, les sauvegardes quotidiennes, et un support par email. Vous n'avez rien a configurer.</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900">Puis-je passer du manage au self-hosted (ou l'inverse) ?</h3>
+          <p class="mt-2 text-sm text-gray-600">Oui, a tout moment. Vos donnees vous appartiennent et sont exportables. Pas de lock-in.</p>
+        </div>
+        <div>
+          <h3 class="font-semibold text-gray-900">Y a-t-il un engagement ?</h3>
+          <p class="mt-2 text-sm text-gray-600">Non. Le service manage est sans engagement, resiliable a tout moment. Pas de frais caches.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
